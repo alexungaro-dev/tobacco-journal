@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { APP_NAME, APP_MONOGRAM, MODULES, type Module } from "./config";
 import { LANGUAGE_KEY } from "./i18n";
@@ -13,6 +20,9 @@ import {
 import type { Pipe } from "./types";
 import { PipeCard } from "./components/PipeCard";
 import { PipeForm } from "./components/PipeForm";
+const Account = lazy(() =>
+  import("./components/Account").then((m) => ({ default: m.Account })),
+);
 function currentModule(): Module {
   const value = location.hash.slice(1);
   return MODULES.includes(value as Module) ? (value as Module) : "pipes";
@@ -86,6 +96,9 @@ export default function App() {
         </div>
       </header>
       <main className="shell">
+        <Suspense fallback={<p role="status">{t("auth.loading")}</p>}>
+          <Account />
+        </Suspense>
         <nav className="nav" aria-label={t("sections")}>
           {MODULES.map((m) => (
             <button

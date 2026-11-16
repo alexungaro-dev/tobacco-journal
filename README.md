@@ -75,3 +75,10 @@ Se la cache npm predefinita non è scrivibile nell'ambiente cloud, usare `npm ci
 Schema SQL, policy RLS, fotografie private e test PostgreSQL locali sono descritti in
 [Supabase foundation](supabase/README.md). React e salvataggio locale restano invariati;
 nessuna migrazione remota viene eseguita automaticamente.
+
+## Milestone 02, fase 2 — Autenticazione Supabase
+
+Registrazione, conferma email, login/logout e recupero password sono nella sezione
+Account. Il catalogo resta locale e disponibile anche senza autenticazione.
+Vedere [configurazione Auth e Deploy Preview](docs/supabase-auth.md) e `.env.example`.
+Le variabili `VITE_*` sono pubbliche: non inserirvi chiavi amministrative o segreti.
