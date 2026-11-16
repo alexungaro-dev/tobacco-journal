@@ -84,9 +84,9 @@
   "auth": {
     "account": "Account",
     "connected": "Accesso effettuato",
-    "localNotice": "La collezione di pipe e le fotografie restano in questo browser. Accesso e uscita non trasferiscono, sostituiscono o separano le collezioni locali per account. Su un dispositivo condiviso i dati locali restano visibili dopo l’uscita.",
-    "unavailable": "Accesso account non configurato. Puoi continuare a usare il catalogo locale.",
-    "badConfig": "La configurazione dell’account non è valida. Contatta l’amministratore del sito; il catalogo locale resta disponibile.",
+    "localNotice": "Il catalogo mostra soltanto le pipe cloud dell’account corrente. I dati locali non vengono importati o cancellati automaticamente. Le fotografie legacy sono conservate in attesa della Fase B.",
+    "unavailable": "Accesso account non configurato. I dati locali rimangono conservati; il catalogo richiede l’autenticazione.",
+    "badConfig": "La configurazione dell’account non è valida. Contatta l’amministratore del sito. I dati locali sono conservati.",
     "loading": "Ripristino dell’accesso…",
     "retry": "Riprova accesso",
     "retryProfile": "Riprova creazione profilo",
@@ -126,5 +126,45 @@
       "mismatch": "Le password non coincidono."
     },
     "resend": "Invia di nuovo la conferma email"
+  },
+  "cloud": {
+    "catalogue": "Catalogo cloud personale",
+    "intro": "Le schede di questo account sono salvate nel cloud.",
+    "loading": "Caricamento delle pipe cloud…",
+    "reload": "Ricarica dal cloud",
+    "prepareLocal": "Prepara importazione dal browser",
+    "migrationTitle": "Importazione nel cloud",
+    "destination": "Account di destinazione: {{email}}",
+    "plan": "Schede importabili: {{valid}}. Schede escluse: {{rejected}}.",
+    "photoPending": "Fotografie legacy nelle schede importabili: {{count}}. Saranno conservate nei dati originali; nessun upload nello Storage viene eseguito.",
+    "migrationHelp": "Scarica prima un backup. Le schede vengono aggiunte senza sostituire quelle cloud diverse con lo stesso ID. Il contenuto del browser non viene mai cancellato. Puoi ripetere la procedura senza duplicare gli ID.",
+    "backupBefore": "Scarica backup prima del trasferimento",
+    "transfer": "Conferma trasferimento delle schede",
+    "confirmImport": "Trasferire {{count}} schede nell’account {{email}}? Gli ID esistenti non verranno sovrascritti. Le foto restano nei dati originali della scheda, senza upload nello Storage. I dati locali non verranno cancellati.",
+    "progress": "Schede controllate: {{count}} di {{total}}…",
+    "result": "Schede verificate nel cloud: {{verified}}. Escluse: {{rejected}}. Conflitti o errori: {{failed}}. Non tentate: {{unattempted}}.",
+    "photosNotUploaded": "Il trasferimento delle fotografie NON è completato. Le foto delle schede verificate restano nei dati originali della scheda; quelle escluse o in errore restano nella sorgente. Conserva il backup. L’upload nello Storage sarà disponibile nella Fase B.",
+    "photoReadOnly": "Le foto legacy sono conservate senza modifiche. Aggiunta, sostituzione e upload di fotografie saranno disponibili nella Fase B.",
+    "footnote": "Catalogo cloud dell’account corrente. Esporta regolarmente un backup JSON. I dati locali originali rimangono nel browser; le fotografie legacy non sono ancora trasferite nello Storage.",
+    "signInRequired": "Accedi dalla sezione Account per visualizzare le tue pipe. I dati locali esistenti sono conservati e non vengono mostrati senza autenticazione.",
+    "preparing": "Preparazione del profilo personale…",
+    "profileRequired": "Completa la preparazione del profilo dalla sezione Account prima di usare il catalogo.",
+    "errors": {
+      "network": "Operazione cloud non verificata. Controlla la connessione e ricarica prima di riprovare: una scrittura potrebbe essere già arrivata al server.",
+      "session": "La sessione non è disponibile o è scaduta. Accedi di nuovo.",
+      "response": "La risposta cloud non è valida. Nessun dato di un altro account viene mostrato.",
+      "conflict": "La scheda è stata modificata o rimossa, oppure l’ID esiste già. Ricarica dal cloud prima di riprovare.",
+      "references": "La scheda è collegata ad altri record e non può essere eliminata.",
+      "importConflict": "L’ID esiste con dati diversi oppure la verifica non coincide. La scheda cloud non è stata sovrascritta; conserva il backup per la revisione.",
+      "source": "Il file non è un backup versione 1 o non è leggibile (massimo 20 MB per file, 10.000 schede). Scarica gli originali se disponibili.",
+      "local": "Impossibile leggere il catalogo locale. Nessun dato è stato cancellato."
+    },
+    "reasons": {
+      "format": "Formato scheda non valido.",
+      "json": "Il record contiene valori non rappresentabili nel database.",
+      "price": "Il prezzo negativo non è ammesso nel cloud. Correggi una copia del backup prima di importare.",
+      "date": "La data di acquisto non è valida. Correggi una copia del backup prima di importare.",
+      "duplicate": "ID ripetuto nella sorgente: tutte le occorrenze sono escluse per evitare ambiguità."
+    }
   }
 }

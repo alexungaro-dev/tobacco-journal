@@ -1,5 +1,9 @@
 # Milestone 02, fase 2 — Supabase Auth
 
+Questa pagina documenta la fase Auth precedente. Il comportamento attuale del
+catalogo, che richiede autenticazione e usa pipes cloud, è descritto in
+[cloud-pipes.md](cloud-pipes.md); i dati locali restano sorgenti di import esplicito.
+
 Branch `feature/supabase-auth`, creato dall'ultimo `origin/main` disponibile.
 La migrazione della fase 1 è già su main. Nessuna modifica SQL o alle policy RLS.
 Questa fase usa Auth e scrive esclusivamente il profilo dell'utente autenticato.

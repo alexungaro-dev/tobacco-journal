@@ -70,7 +70,8 @@ async function mock(
           msg: "Raw private server message",
         };
       } else result = session();
-    } else if (url.pathname === "/auth/v1/signup")
+    } else if (url.pathname === "/rest/v1/pipes") result = [];
+    else if (url.pathname === "/auth/v1/signup")
       result = { user: { ...user, email_confirmed_at: null }, session: null };
     else if (url.pathname === "/auth/v1/user") result = user;
     else if (url.pathname === "/rest/v1/profiles") {
@@ -147,9 +148,9 @@ test("login, profile retry, session reload and logout preserve local catalogue",
   );
   const storage = await page.evaluate(() => JSON.stringify(localStorage));
   expect(storage).not.toContain(password);
-  await expect(
-    page.getByRole("heading", { name: "Peterson 999" }),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
   expect(
     api.requests.some((r) => r.path === "/auth/v1/logout?scope=local"),
   ).toBeTruthy();
@@ -200,7 +201,9 @@ test("signup requires confirmation and recovery uses fixed same-origin callbacks
   ).toBeFalsy();
   await page.getByLabel("Conferma password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Registrati", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Controlla la posta");
+  await expect(page.locator(".account").getByRole("status")).toContainText(
+    "Controlla la posta",
+  );
   const signup = api.requests.find((r) =>
     r.path.startsWith("/auth/v1/signup"),
   )!;
@@ -217,7 +220,7 @@ test("signup requires confirmation and recovery uses fixed same-origin callbacks
   await page
     .getByRole("button", { name: "Recupera password", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.locator(".account").getByRole("status")).toContainText(
     "Se l’indirizzo è registrato",
   );
   expect(
@@ -237,7 +240,7 @@ test("PKCE password recovery, reload and password update; invalid callbacks are 
   await page
     .getByRole("button", { name: "Recupera password", exact: true })
     .click();
-  await expect(page.getByRole("status")).toContainText(
+  await expect(page.locator(".account").getByRole("status")).toContainText(
     "Se l’indirizzo è registrato",
   );
   const request = api.requests.find((r) =>
@@ -259,7 +262,9 @@ test("PKCE password recovery, reload and password update; invalid callbacks are 
   await page.getByLabel("Nuova password", { exact: true }).fill(password);
   await page.getByLabel("Conferma password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Salva nuova password" }).click();
-  await expect(page.getByRole("status")).toContainText("Password aggiornata");
+  await expect(page.locator(".account").getByRole("status")).toContainText(
+    "Password aggiornata",
+  );
   expect(
     api.requests.some(
       (r) => r.path === "/auth/v1/user" && r.body.password === password,
@@ -302,7 +307,9 @@ test("email confirmation exchanges PKCE code only once and creates a profile aft
   await page.getByLabel("Password", { exact: true }).fill(password);
   await page.getByLabel("Conferma password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Registrati", exact: true }).click();
-  await expect(page.getByRole("status")).toContainText("Controlla la posta");
+  await expect(page.locator(".account").getByRole("status")).toContainText(
+    "Controlla la posta",
+  );
   const signup = api.requests.find((r) =>
     r.path.startsWith("/auth/v1/signup"),
   )!;
@@ -375,7 +382,9 @@ test("confirmation resend uses Auth API without creating a profile", async ({
   await page
     .getByRole("button", { name: "Invia di nuovo la conferma email" })
     .click();
-  await expect(page.getByRole("status")).toContainText("Controlla la posta");
+  await expect(page.locator(".account").getByRole("status")).toContainText(
+    "Controlla la posta",
+  );
   const resend = api.requests.find((r) =>
     r.path.startsWith("/auth/v1/resend"),
   )!;

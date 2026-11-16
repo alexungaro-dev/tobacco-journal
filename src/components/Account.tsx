@@ -2,12 +2,12 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { configuration, supabase, callbackUrl } from "../auth/client";
 import { authErrorKey } from "../auth/config";
-import { useAuth } from "../auth/useAuth";
+import { useAuthContext } from "../auth/AuthContext";
 
 type Mode = "login" | "signup" | "forgot";
 export function Account() {
-  const { t, i18n } = useTranslation();
-  const auth = useAuth(i18n.resolvedLanguage || "it");
+  const { t } = useTranslation();
+  const auth = useAuthContext();
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,6 +22,17 @@ export function Account() {
       details.current.open = true;
     if (auth.recovery) passwordField.current?.focus();
   }, [auth.recovery, auth.message, auth.sessionError]);
+  const previousUser = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    const next = auth.session?.user.id;
+    if (previousUser.current && previousUser.current !== next) {
+      setEmail("");
+      setPassword("");
+      setConfirmation("");
+      setError("");
+    }
+    previousUser.current = next;
+  }, [auth.session?.user.id]);
   const reset = auth.recovery;
   function switchMode(next: Mode) {
     setMode(next);
@@ -119,6 +130,15 @@ export function Account() {
                 >
                   {t("auth.retry")}
                 </button>
+                {!auth.session && (
+                  <button
+                    className="btn secondary"
+                    disabled={busy}
+                    onClick={() => void run(() => auth.signOut())}
+                  >
+                    {t("auth.logout")}
+                  </button>
+                )}
               </div>
             )}
             {auth.message && <p role="status">{t(auth.message)}</p>}
@@ -139,10 +159,7 @@ export function Account() {
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
-                      const { error } = await supabase!.auth.signOut({
-                        scope: "local",
-                      });
-                      if (error) throw error;
+                      await auth.signOut();
                       auth.finishRecovery();
                       setMode("login");
                       auth.setMessage("auth.sessionEnded");

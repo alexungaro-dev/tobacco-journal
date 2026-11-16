@@ -9,7 +9,7 @@ docker run --detach --name "$container" --network none \
   -e POSTGRES_HOST_AUTH_METHOD=trust "$image" >/dev/null
 ready=false
 for ((i=0; i<60; i++)); do
-  if docker exec "$container" pg_isready -U postgres >/dev/null 2>&1; then ready=true; break; fi
+  if docker exec "$container" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then ready=true; break; fi
   sleep 1
 done
 if [ "$ready" != true ]; then docker logs "$container"; exit 1; fi

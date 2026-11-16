@@ -1,98 +1,80 @@
 import { test, expect } from "@playwright/test";
-const photo =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4WQAAAAASUVORK5CYII=";
-const legacy = {
-  id: "legacy",
-  brand: "Peterson",
-  model: "999",
-  shape: "Bent",
-  material: "Radica",
-  filter: "9",
-  status: "stored",
-  date: "2025-05-10",
-  price: 125.5,
-  notes: "Ricordo personale",
-  photo,
-  custom: "retained",
-};
-test("legacy data, translations, locale, navigation and responsive layout", async ({
+import { readFile } from "node:fs/promises";
+import {
+  cloudMock,
+  signIn,
+  row,
+  LEGACY,
+  PHOTO,
+  OWNER_A,
+  OWNER_B,
+} from "./cloudMock";
+
+test("signed-out catalogue hides local and cloud personal data; explicit import only", async ({
   page,
 }) => {
-  const errors: string[] = [];
-  page.on("pageerror", (e) => errors.push(e.message));
-  await page.addInitScript((p) => {
-    if (!localStorage.getItem("tj-pipes-v1"))
-      localStorage.setItem("tj-pipes-v1", JSON.stringify([p]));
-  }, legacy);
+  const api = await cloudMock(page, [row()]);
+  const original = JSON.stringify([LEGACY]);
+  await page.addInitScript(
+    (v) => localStorage.setItem("tj-pipes-v1", v),
+    original,
+  );
   await page.goto("/");
+  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
+  expect(
+    api.requests.some((r) => r.path.startsWith("/rest/v1/pipes")),
+  ).toBeFalsy();
+  await signIn(page);
   await expect(
     page.getByRole("heading", { name: "Peterson 999" }),
   ).toBeVisible();
-  await expect(page.getByAltText("Fotografia di Peterson 999")).toBeVisible();
-  await expect(page.locator(".photo img")).toHaveJSProperty("naturalWidth", 1);
-  await expect(page.locator(".details")).toContainText("125,50");
-  await page.getByRole("combobox", { name: "Lingua" }).selectOption("en");
-  await expect(page.getByRole("heading", { name: "My pipes" })).toBeVisible();
-  await expect(page.locator(".details")).toContainText("125.50");
-  await expect(page.locator("html")).toHaveAttribute("lang", "en");
-  await page.reload();
-  await expect(page.getByRole("heading", { name: "My pipes" })).toBeVisible();
-  for (const name of ["Dashboard", "Tobaccos", "Cigars", "Smoking diary"]) {
-    await page.getByRole("button", { name, exact: true }).click();
-    await expect(
-      page.getByText("This module will be available in a future milestone."),
-    ).toBeVisible();
-  }
-  await page.getByRole("button", { name: "Go to pipes" }).click();
-  for (const width of [390, 768, 1280]) {
-    await page.setViewportSize({ width, height: 850 });
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= innerWidth,
-      ),
-    ).toBeTruthy();
-  }
-  await page.getByRole("button", { name: "View / Edit →" }).click();
-  await expect(page.getByLabel("Personal notes")).toHaveValue(
-    "Ricordo personale",
+  expect(
+    api.requests
+      .filter((r) => r.path.startsWith("/rest/v1/pipes"))
+      .every((r) => r.method === "GET"),
+  ).toBeTruthy();
+  await page
+    .getByRole("button", { name: "Prepara importazione dal browser" })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Importazione nel cloud" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
   );
-  await page.getByLabel("Model *", { exact: true }).fill("Updated");
-  await page.getByRole("button", { name: "Save pipe", exact: true }).click();
-  const saved = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("tj-pipes-v1")!),
+  await expect(
+    page.getByRole("region", { name: "Importazione nel cloud" }),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
+    original,
   );
-  expect(saved[0].custom).toBe("retained");
-  expect(saved[0].photo).toBe(photo);
-  expect(errors).toEqual([]);
 });
-test("CRUD, photos, search, filters, persistence and JSON round trip", async ({
+
+test("cloud CRUD, search, filters, bilingual responsive UI and JSON export", async ({
   page,
 }) => {
+  const api = await cloudMock(page);
   await page.goto("/");
+  await signIn(page);
   await page.getByRole("button", { name: "+ Aggiungi pipa" }).click();
+  await expect(page.getByLabel("Marca *")).toBeFocused();
   await page.getByLabel("Marca *").fill("Savinelli");
   await page.getByLabel("Modello *").fill("Roma");
-  await page.getByLabel("Note personali").fill("Test personale");
+  await page.getByLabel("Note personali").fill("Cloud note");
   await page.getByLabel("Stato", { exact: true }).last().selectOption("stored");
-  const chooserPromise = page.waitForEvent("filechooser");
-  await page
-    .getByRole("button", {
-      name: "Scegli una fotografia JPEG, PNG o WebP (max 3 MB)",
-    })
-    .click();
-  const chooser = await chooserPromise;
-  await chooser.setFiles({
-    name: "photo.png",
-    mimeType: "image/png",
-    buffer: Buffer.from(photo.split(",")[1], "base64"),
-  });
-  await expect(page.getByAltText("Anteprima fotografia")).toBeVisible();
-  await page.getByRole("button", { name: "Salva scheda" }).click();
-  await page.reload();
+  await expect(page.locator("#pic")).toHaveCount(0);
+  await page.getByRole("button", { name: "Salva scheda", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(
     page.getByRole("heading", { name: "Savinelli Roma" }),
   ).toBeVisible();
-  await page.getByRole("searchbox").fill("assente");
+  expect(api.rows).toHaveLength(1);
+  expect(api.rows[0].user_id).toBe(OWNER_A);
+  await page.getByRole("searchbox").fill("absent");
   await expect(
     page.getByText("Nessun risultato", { exact: true }),
   ).toBeVisible();
@@ -102,54 +84,142 @@ test("CRUD, photos, search, filters, persistence and JSON round trip", async ({
     page.getByText("Nessun risultato", { exact: true }),
   ).toBeVisible();
   await page.getByLabel("Stato", { exact: true }).selectOption("stored");
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Esporta dati JSON" }).click();
-  const download = await downloadPromise;
-  const path = await download.path();
   await page.getByRole("button", { name: "Visualizza / Modifica →" }).click();
-  page.once("dialog", (d) => d.dismiss());
-  await page.getByRole("button", { name: "Elimina", exact: true }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  page.once("dialog", (d) => d.accept());
-  await page.getByRole("button", { name: "Elimina", exact: true }).click();
-  await expect(page.getByText("La tua collezione inizia qui")).toBeVisible();
-  page.once("dialog", (d) => d.accept());
-  await page
-    .getByLabel("Importa dati JSON", { exact: true })
-    .setInputFiles(path!);
+  await page.getByLabel("Modello *").fill("Roma Updated");
+  await page.getByRole("button", { name: "Salva scheda", exact: true }).click();
+  await page.reload();
   await expect(
-    page.getByRole("heading", { name: "Savinelli Roma" }),
+    page.getByRole("heading", { name: "Savinelli Roma Updated" }),
   ).toBeVisible();
-  await expect(page.getByAltText("Fotografia di Savinelli Roma")).toBeVisible();
+  await page.getByRole("combobox", { name: "Lingua" }).selectOption("en");
+  for (const width of [390, 768, 1280]) {
+    await page.setViewportSize({ width, height: 850 });
+    await page.screenshot({
+      path: `test-results/cloud-${width}.png`,
+      fullPage: true,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBeTruthy();
+  }
+  const downloaded = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export JSON data" }).click();
+  const backup = JSON.parse(
+    await readFile((await (await downloaded).path())!, "utf8"),
+  );
+  expect(backup.format).toBe("tobacco-journal-pipes");
+  expect(backup.pipes[0].model).toBe("Roma Updated");
+  await page.getByRole("button", { name: "View / Edit →" }).click();
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Delete", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(api.rows).toHaveLength(0);
+  expect(
+    await page.evaluate(() => localStorage.getItem("tj-pipes-v1")),
+  ).toBeNull();
 });
-test("malformed storage is preserved and recoverable, invalid import cannot overwrite", async ({
+
+test("local migration preserves photos, reports invalid rows, verifies retries and never overwrites conflicts", async ({
   page,
 }) => {
-  await page.addInitScript(() =>
-    localStorage.setItem("tj-pipes-v1", "{broken"),
-  );
+  const api = await cloudMock(page);
+  const original = JSON.stringify([
+    LEGACY,
+    { ...LEGACY, id: "negative", price: -1 },
+    { ...LEGACY, id: "bad-date", date: "2025-02-30" },
+    { id: "broken" },
+    { ...LEGACY, id: "dup" },
+    { ...LEGACY, id: "dup" },
+  ]);
+  await page.addInitScript((v) => {
+    if (!localStorage.getItem("tj-pipes-v1"))
+      localStorage.setItem("tj-pipes-v1", v);
+  }, original);
   await page.goto("/");
-  await expect(page.getByRole("alert")).toContainText(
-    "I dati originali non sono stati modificati",
+  await signIn(page);
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
   );
-  await expect(
-    page.getByRole("button", { name: "+ Aggiungi pipa" }),
-  ).toBeDisabled();
-  expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
-    "{broken",
+  await page
+    .getByRole("button", { name: "Prepara importazione dal browser" })
+    .click();
+  const region = page.getByRole("region", { name: "Importazione nel cloud" });
+  await expect(region).toContainText(
+    "Schede importabili: 1. Schede escluse: 5.",
   );
-  await page.getByLabel("Importa dati JSON", { exact: true }).setInputFiles({
-    name: "bad.json",
-    mimeType: "application/json",
-    buffer: Buffer.from("{}"),
-  });
-  await expect(page.getByRole("alert")).toContainText(
-    "Importazione non riuscita",
+  const downloaded = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Scarica backup prima del trasferimento" })
+    .click();
+  const backup = JSON.parse(
+    await readFile((await (await downloaded).path())!, "utf8"),
   );
-  expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
-    "{broken",
+  expect(backup.pipes).toEqual(JSON.parse(original));
+  page.once("dialog", (d) => d.dismiss());
+  await page
+    .getByRole("button", { name: "Conferma trasferimento delle schede" })
+    .click();
+  expect(api.rows).toHaveLength(0);
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Conferma trasferimento delle schede" })
+    .click();
+  await expect(region).toContainText(
+    "Schede verificate nel cloud: 1. Escluse: 5.",
+  );
+  expect(api.rows).toHaveLength(1);
+  expect(api.rows[0].legacy_payload).toEqual(LEGACY);
+  await expect(page.getByAltText("Fotografia di Peterson 999")).toBeVisible();
+  await expect(region).toContainText(
+    "trasferimento delle fotografie NON è completato",
   );
   page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Conferma trasferimento delle schede" })
+    .click();
+  await expect(region).toContainText("Schede verificate nel cloud: 1.");
+  expect(api.rows).toHaveLength(1);
+  await page.getByRole("button", { name: "Visualizza / Modifica →" }).click();
+  await expect(page.getByAltText("Anteprima fotografia")).toHaveAttribute(
+    "src",
+    PHOTO,
+  );
+  await page.getByLabel("Modello *").fill("Changed in cloud");
+  await page.getByRole("button", { name: "Salva scheda", exact: true }).click();
+  expect(api.rows[0].legacy_payload.photo).toBe(PHOTO);
+  expect(api.rows[0].legacy_payload.custom).toEqual({ retained: true });
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Conferma trasferimento delle schede" })
+    .click();
+  await expect(region).toContainText("Conflitti o errori: 1.");
+  expect(api.rows[0].model).toBe("Changed in cloud");
+  await page.screenshot({
+    path: "test-results/cloud-import.png",
+    fullPage: true,
+  });
+  const cloudDownload = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Esporta dati JSON" }).click();
+  const cloudBackup = JSON.parse(
+    await readFile((await (await cloudDownload).path())!, "utf8"),
+  );
+  expect(cloudBackup.pipes[0].photo).toBe(PHOTO);
+  expect(cloudBackup.pipes[0].custom).toEqual({ retained: true });
+  expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
+    original,
+  );
+});
+
+test("version 1 JSON import adds records without replacing the cloud catalogue", async ({
+  page,
+}) => {
+  const api = await cloudMock(page, [
+    row(OWNER_A, { id: "already", brand: "Existing", model: "Cloud" }),
+  ]);
+  await page.goto("/");
+  await signIn(page);
   await page.getByLabel("Importa dati JSON", { exact: true }).setInputFiles({
     name: "backup.json",
     mimeType: "application/json",
@@ -157,86 +227,274 @@ test("malformed storage is preserved and recoverable, invalid import cannot over
       JSON.stringify({
         format: "tobacco-journal-pipes",
         version: 1,
-        pipes: [legacy],
+        pipes: [LEGACY],
       }),
     ),
   });
-  await expect(
-    page.getByRole("heading", { name: "Peterson 999" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: "+ Aggiungi pipa" }),
-  ).toBeEnabled();
-});
-test("initial English browser language is detected", async ({ browser }) => {
-  const context = await browser.newContext({ locale: "en-GB" });
-  const page = await context.newPage();
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "My pipes" })).toBeVisible();
-  await context.close();
-});
-
-test("storage unavailable and quota errors do not crash or discard records", async ({
-  page,
-}) => {
-  await page.addInitScript(() =>
-    Object.defineProperty(window, "localStorage", {
-      get() {
-        throw new DOMException("blocked", "SecurityError");
-      },
-    }),
-  );
-  await page.goto("/");
-  await expect(page.getByRole("alert")).toContainText(
-    "Impossibile leggere i dati salvati",
-  );
-  await expect(
-    page.getByRole("button", { name: "+ Aggiungi pipa" }),
-  ).toBeDisabled();
-});
-
-test("failed writes keep the form and original collection; photo validation and modal keyboard", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "+ Aggiungi pipa" }).click();
-  await expect(page.getByLabel("Marca *")).toBeFocused();
-  await page.keyboard.press("Shift+Tab");
-  await expect(
-    page.getByRole("button", { name: "Salva scheda" }),
-  ).toBeFocused();
-  await page.keyboard.press("Escape");
-  await expect(
-    page.getByRole("button", { name: "+ Aggiungi pipa" }),
-  ).toBeFocused();
-  await page.getByRole("button", { name: "+ Aggiungi pipa" }).click();
-  await page.getByLabel("Marca *").fill("Test");
-  await page.getByLabel("Modello *").fill("Quota");
-  await page.locator("#pic").setInputFiles({
-    name: "bad.txt",
-    mimeType: "text/plain",
-    buffer: Buffer.from("test"),
-  });
-  await expect(page.getByRole("alert")).toContainText("Utilizza un JPEG");
-  await page.locator("#pic").setInputFiles({
-    name: "valid.png",
-    mimeType: "image/png",
-    buffer: Buffer.from(photo.split(",")[1], "base64"),
-  });
-  await expect(page.getByAltText("Anteprima fotografia")).toBeVisible();
-  await page.getByRole("button", { name: "Rimuovi fotografia" }).click();
-  await expect(page.getByAltText("Anteprima fotografia")).toHaveCount(0);
-  await page.evaluate(() => {
-    Storage.prototype.setItem = () => {
-      throw new DOMException("full", "QuotaExceededError");
-    };
-  });
-  await page.getByRole("button", { name: "Salva scheda" }).click();
-  await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
-    "Salvataggio non riuscito",
-  );
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Conferma trasferimento delle schede" })
+    .click();
+  await expect(page.getByText(/Schede verificate nel cloud: 1/)).toBeVisible();
+  expect(api.rows).toHaveLength(2);
+  expect(api.rows.find((r) => r.id === "already")?.model).toBe("Cloud");
   expect(
     await page.evaluate(() => localStorage.getItem("tj-pipes-v1")),
   ).toBeNull();
+});
+
+test("account isolation and pagination: logout clears open forms and switching users never shows old pipes", async ({
+  page,
+}) => {
+  const api = await cloudMock(page, [
+    row(),
+    row(OWNER_A, { id: "2", brand: "A", model: "Two" }),
+    row(OWNER_A, { id: "3", brand: "A", model: "Three" }),
+    row(OWNER_B, { id: "legacy", brand: "Other", model: "Private" }),
+  ]);
+  await page.goto("/");
+  await signIn(page);
+  await expect(
+    page.getByRole("heading", { name: "Peterson 999" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "A Three" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Other Private" }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Visualizza / Modifica →" })
+    .first()
+    .click();
+  // Logout from a second tab must unmount even an open editing dialog.
+  const other = await page.context().newPage();
+  await cloudMock(other);
+  await other.goto("/");
+  await other.locator(".account summary").click();
+  await expect(
+    other.getByRole("button", { name: "Esci", exact: true }),
+  ).toBeVisible();
+  await other.getByRole("button", { name: "Esci", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
+  await other.close();
+  await signIn(page, "other@example.test");
+  await expect(
+    page.getByRole("heading", { name: "Other Private" }),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
+  expect(
+    api.requests
+      .filter((r) => r.path.startsWith("/rest/v1/pipes") && r.method === "GET")
+      .every(
+        (r) =>
+          new URL("https://test" + r.path).searchParams.get("user_id") ===
+          `eq.${r.owner}`,
+      ),
+  ).toBeTruthy();
+});
+
+test("a late cloud response cannot repopulate the UI after logout", async ({
+  page,
+}) => {
+  const api = await cloudMock(page, [row()]);
+  const release = api.pauseNextRead();
+  await page.goto("/");
+  await signIn(page);
+  await expect(page.getByText("Caricamento delle pipe cloud…")).toBeVisible();
+  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  release();
+  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
+  await signIn(page, "other@example.test");
+  await expect(page.getByText("La tua collezione inizia qui")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
+});
+
+test("network errors and lost write responses never report false success or duplicate records", async ({
+  page,
+}) => {
+  const api = await cloudMock(page);
+  api.failNext("GET");
+  await page.goto("/");
+  await signIn(page);
+  await expect(page.getByRole("alert")).toContainText(
+    "Operazione cloud non verificata",
+  );
+  await page
+    .getByRole("button", { name: "Ricarica dal cloud" })
+    .first()
+    .click();
+  await expect(page.getByText("La tua collezione inizia qui")).toBeVisible();
+  await page.getByRole("button", { name: "+ Aggiungi pipa" }).click();
+  await page.getByLabel("Marca *").fill("Network");
+  await page.getByLabel("Modello *").fill("Uncertain");
+  api.loseWrite();
+  await page.getByRole("button", { name: "Salva scheda", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "Operazione cloud non verificata",
+  );
+  expect(api.rows).toHaveLength(1);
+  await expect(page.getByLabel("Modello *")).toHaveValue("Uncertain");
+  await page.getByRole("button", { name: "Salva scheda", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "ID esiste già",
+  );
+  expect(api.rows).toHaveLength(1);
+  await page.getByRole("button", { name: "Annulla", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Ricarica dal cloud" })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Network Uncertain" }),
+  ).toBeVisible();
+});
+
+test("expired API session hides data and an edit conflict cannot overwrite a newer record", async ({
+  page,
+}) => {
+  const api = await cloudMock(page, [row()]);
+  await page.goto("/");
+  await signIn(page);
+  await page.getByRole("button", { name: "Visualizza / Modifica →" }).click();
+  api.rows[0].updated_at = "2026-11-16T19:00:00.000Z";
+  api.rows[0].model = "Newer version";
+  await page.getByLabel("Modello *").fill("Stale change");
+  await page.getByRole("button", { name: "Salva scheda", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "La scheda è stata modificata",
+  );
+  expect(api.rows[0].model).toBe("Newer version");
+  await page.getByRole("button", { name: "Annulla", exact: true }).click();
+  api.expire();
+  await page
+    .getByRole("button", { name: "Ricarica dal cloud" })
+    .first()
+    .click();
+  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
+});
+
+test("logout hides the account catalogue before the logout network request completes", async ({
+  page,
+}) => {
+  const api = await cloudMock(page, [row()]);
+  await page.goto("/");
+  await signIn(page);
+  await expect(
+    page.getByRole("heading", { name: "Peterson 999" }),
+  ).toBeVisible();
+  const release = api.pauseNextLogout();
+  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
+  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  release();
+  await expect(page.getByLabel("Email", { exact: true })).toBeEnabled();
+});
+
+test("migration readback failure is reported and repeating verifies the existing record", async ({
+  page,
+}) => {
+  const api = await cloudMock(page);
+  await page.goto("/");
+  await signIn(page);
+  await expect(page.getByText("La tua collezione inizia qui")).toBeVisible();
+  await page.getByLabel("Importa dati JSON", { exact: true }).setInputFiles({
+    name: "backup.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(
+      JSON.stringify({
+        format: "tobacco-journal-pipes",
+        version: 1,
+        pipes: [LEGACY],
+      }),
+    ),
+  });
+  api.failNext("GET");
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Conferma trasferimento delle schede" })
+    .click();
+  await expect(page.getByText(/Schede verificate nel cloud: 0/)).toBeVisible();
+  await expect(page.getByText(/Conflitti o errori: 1/)).toBeVisible();
+  expect(api.rows).toHaveLength(1);
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("button", { name: "Conferma trasferimento delle schede" })
+    .click();
+  await expect(page.getByText(/Schede verificate nel cloud: 1/)).toBeVisible();
+  expect(api.rows).toHaveLength(1);
+});
+
+test("malformed local data and denied localStorage access remain untouched", async ({
+  page,
+}) => {
+  await cloudMock(page);
+  await page.addInitScript(() =>
+    localStorage.setItem("tj-pipes-v1", "{broken"),
+  );
+  await page.goto("/");
+  await signIn(page);
+  await page
+    .getByRole("button", { name: "Prepara importazione dal browser" })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Il file non è un backup",
+  );
+  const downloaded = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Scarica dati originali per recupero" })
+    .click();
+  expect(await readFile((await (await downloaded).path())!, "utf8")).toBe(
+    "{broken",
+  );
+  expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
+    "{broken",
+  );
+  await page.evaluate(() => {
+    const get = Storage.prototype.getItem;
+    Storage.prototype.getItem = function (key) {
+      if (key === "tj-pipes-v1")
+        throw new DOMException("denied", "SecurityError");
+      return get.call(this, key);
+    };
+  });
+  await page
+    .getByRole("button", { name: "Prepara importazione dal browser" })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Impossibile leggere il catalogo locale",
+  );
+});
+
+test("token expiry hides cached cloud data even when Auth refresh cannot reach the network", async ({
+  page,
+}) => {
+  await page.clock.install();
+  const api = await cloudMock(page, [row()]);
+  await page.goto("/");
+  await signIn(page);
+  await expect(
+    page.getByRole("heading", { name: "Peterson 999" }),
+  ).toBeVisible();
+  api.blockRefresh();
+  await page.clock.fastForward(3601 * 1000);
+  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
+    0,
+  );
 });

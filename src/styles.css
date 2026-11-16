@@ -538,3 +538,23 @@ button:disabled {
 }
 .accountsession p { min-width: 0; }
 .accountlinks { margin-top: 16px; }
+
+.cloudtools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0;
+}
+.cloudtools .btn { white-space: normal; }
+.migration {
+  margin: 24px 0;
+  border: 1px solid #71634a;
+  border-radius: 9px;
+  padding: 20px;
+  background: #20231d;
+  overflow-wrap: anywhere;
+}
+.migration h2 { font: normal 28px Georgia, serif; color: #eddcb9; }
+.migration p { line-height: 1.6; }
+.importissues { max-height: 240px; overflow: auto; }
+.pipefields { border: 0; margin: 0; padding: 0; min-width: 0; }
