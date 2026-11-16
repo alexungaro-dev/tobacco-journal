@@ -69,3 +69,9 @@ Nell'ambiente cloud: build Vite con TypeScript strict riuscita, 7 test unitari s
 Non sono stati eseguiti test su Safari/Firefox o sul deploy Netlify pubblico. Non sono stati letti i dati personali del browser del sito pubblico. La configurazione dell'account Netlify non è verificabile dal solo checkout.
 
 Se la cache npm predefinita non è scrivibile nell'ambiente cloud, usare `npm ci --cache /tmp/tobacco-npm-cache`.
+
+## Milestone 02 — Schema Supabase in revisione
+
+Schema SQL, policy RLS, fotografie private e test PostgreSQL locali sono descritti in
+[Supabase foundation](supabase/README.md). React e salvataggio locale restano invariati;
+nessuna migrazione remota viene eseguita automaticamente.
