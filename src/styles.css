@@ -490,3 +490,51 @@ button:disabled {
     display: none;
   }
 }
+
+.account {
+  margin: 22px 0;
+  border: 1px solid #55513f;
+  border-radius: 8px;
+  background: #20231d;
+}
+.account summary {
+  cursor: pointer;
+  padding: 16px;
+  color: #e7c996;
+}
+.account summary:focus-visible {
+  outline: 2px solid #c2a473;
+  outline-offset: 2px;
+}
+.accountbody {
+  padding: 0 20px 20px;
+  overflow-wrap: anywhere;
+}
+.account h2 {
+  font: normal 28px Georgia, serif;
+  color: #eddcb9;
+}
+.account form {
+  max-width: 460px;
+}
+.account fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.accountnote {
+  color: #b3ad9e;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.accountsession, .accountlinks {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.accountsession p { min-width: 0; }
+.accountlinks { margin-top: 16px; }
