@@ -446,14 +446,9 @@
     "stockUnverified": "Stock update could not be confirmed.",
     "stockUnchanged": "Stock unchanged.",
     "provenance": {
-      "product": {
-        "owned": "From my collection",
-        "other": "Uncatalogued"
-      },
+      "other": "Uncatalogued",
       "pipe": {
-        "owned": "Pipe from my collection",
-        "gift": "Borrowed pipe",
-        "other": "Uncatalogued pipe"
+        "gift": "Borrowed pipe"
       },
       "tobacco": {
         "gift": "Gifted tobacco"

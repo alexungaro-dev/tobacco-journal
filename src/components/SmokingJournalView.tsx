@@ -269,16 +269,14 @@ export function SmokingJournalView({
   const blocked = !ready || busy || editing !== undefined;
   function provenance(kind: ProductKind, snapshot: Snapshot) {
     if (
-      !snapshot.brand &&
-      !snapshot.name &&
-      !snapshot.detail &&
-      !snapshot.catalogueId
+      snapshot.source === "owned" ||
+      (!snapshot.brand &&
+        !snapshot.name &&
+        !snapshot.detail &&
+        !snapshot.catalogueId)
     )
       return null;
-    const key =
-      kind === "pipe" || snapshot.source === "gift"
-        ? `${kind}.${snapshot.source}`
-        : `product.${snapshot.source}`;
+    const key = snapshot.source === "gift" ? `${kind}.gift` : "other";
     return (
       <span className="journal-provenance">{t("diary.provenance." + key)}</span>
     );

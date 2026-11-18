@@ -126,14 +126,14 @@ test("pipe provenance is independent and stock changes only the selected tobacco
   });
   await expect(
     added.locator(".journal-origin-row").first().locator(".journal-provenance"),
-  ).toHaveText("Dalla mia collezione");
+  ).toHaveCount(0);
   await expect(
     added.locator(".journal-pipe-origin .journal-provenance"),
   ).toHaveText("Pipa prestata");
   await added.getByText("Dettagli della fumata").click();
   await expect(
     added.locator(".journal-snapshot .journal-provenance"),
-  ).toHaveText(["Dalla mia collezione", "Pipa prestata"]);
+  ).toHaveText(["Pipa prestata"]);
   await expect(added.getByText("Offerto da: Anna")).toBeVisible();
   await expect(added).toContainText("Caricamento leggero");
   await expect(added).toContainText("Vaniglia");
@@ -168,7 +168,11 @@ test("pipe provenance is independent and stock changes only the selected tobacco
   ).toHaveText("Tabacco offerto");
   await expect(
     gifted.locator(".journal-pipe-origin .journal-provenance"),
-  ).toHaveText("Pipa della mia collezione");
+  ).toHaveCount(0);
+  await gifted.getByText("Dettagli della fumata").click();
+  await expect(
+    gifted.locator(".journal-snapshot .journal-provenance"),
+  ).toHaveText(["Tabacco offerto"]);
   expect(api.sessions[1]).toMatchObject({
     tobacco_id: null,
     pipe_id: "legacy",
@@ -298,9 +302,25 @@ test("gifted and uncatalogued cigars show localized provenance in compact cards 
   const unlisted = journalRow(OWNER_A, "unlisted", "Toscano");
   const historical = journalRow(OWNER_A, "historical");
   historical.extra = {};
-  await cloudMock(page, [], [], [], [gifted, unlisted, historical]);
+  const owned = journalRow(OWNER_A, "owned", "Personale");
+  owned.extra.product = {
+    brand: "Guest",
+    name: "Personale",
+    source: "owned",
+    catalogueId: "removed-cigar",
+  };
+  await cloudMock(page, [], [], [], [gifted, unlisted, historical, owned]);
   await open(page);
 
+  const personalCard = card(page, "Guest Personale");
+  await expect(personalCard).toBeVisible();
+  await expect(
+    personalCard.locator(".journal-origin-row .journal-provenance"),
+  ).toHaveCount(0);
+  await personalCard.getByText("Dettagli della fumata").click();
+  await expect(
+    personalCard.locator(".journal-snapshot .journal-provenance"),
+  ).toHaveCount(0);
   const giftCard = card(page, "Amico Reserva");
   await expect(
     giftCard.locator(".journal-origin-row .journal-provenance"),
@@ -309,7 +329,7 @@ test("gifted and uncatalogued cigars show localized provenance in compact cards 
     card(page, "Guest Toscano").locator(
       ".journal-origin-row .journal-provenance",
     ),
-  ).toHaveText("Non catalogata");
+  ).toHaveText("Non catalogato");
   await expect(card(page, "Riferimento storico")).toBeVisible();
   await expect(
     card(page, "Riferimento storico").locator(".journal-provenance"),

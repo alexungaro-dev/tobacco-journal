@@ -446,14 +446,9 @@
     "stockUnverified": "Aggiornamento della scorta non confermato.",
     "stockUnchanged": "Scorte invariate.",
     "provenance": {
-      "product": {
-        "owned": "Dalla mia collezione",
-        "other": "Non catalogata"
-      },
+      "other": "Non catalogato",
       "pipe": {
-        "owned": "Pipa della mia collezione",
-        "gift": "Pipa prestata",
-        "other": "Pipa non catalogata"
+        "gift": "Pipa prestata"
       },
       "tobacco": {
         "gift": "Tabacco offerto"
