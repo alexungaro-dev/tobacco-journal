@@ -13,6 +13,7 @@ import {
   type TobaccoImportItem,
   type TobaccoRow,
 } from "../data/tobaccos";
+import { FillIndicator } from "./RemainingLevelPicker";
 import { PipePhoto } from "./PipePhoto";
 import { TobaccoForm } from "./TobaccoForm";
 
@@ -359,6 +360,15 @@ export function TobaccoCatalogue({
               </h3>
               {pendingPhoto(row) && <p>{t("tobaccos.pendingPhoto")}</p>}
               <dl className="tobacco-details">
+                {tobacco.remainingLevel && (
+                  <div>
+                    <dt>{t("tobaccos.fields.remainingLevel")}</dt>
+                    <dd className="tobacco-level-value">
+                      <FillIndicator level={tobacco.remainingLevel} />
+                      {t("tobaccos.levels." + tobacco.remainingLevel)}
+                    </dd>
+                  </div>
+                )}
                 {(
                   [
                     "producer",

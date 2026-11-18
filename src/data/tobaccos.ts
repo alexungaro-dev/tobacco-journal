@@ -37,6 +37,14 @@ export const numberFields = [
   "price",
   "rating",
 ] as const;
+export const remainingLevels = [
+  "full",
+  "almostFull",
+  "half",
+  "almostEmpty",
+  "empty",
+] as const;
+export type RemainingLevel = (typeof remainingLevels)[number];
 export const tobaccoFormat = "tobacco-journal-tobaccos";
 export interface Tobacco {
   id: string;
@@ -49,6 +57,7 @@ export interface Tobacco {
   package: string;
   initial: number | null;
   remaining: number | null;
+  remainingLevel: RemainingLevel | null;
   date: string;
   price: number | null;
   status: string;
@@ -146,7 +155,15 @@ export function normalizeTobacco(value: unknown): Tobacco {
       return [field, raw];
     }),
   ) as Pick<Tobacco, (typeof numberFields)[number]>;
-  return { ...text, ...numbers, components: componentsOf(components) };
+  const rawLevel = record.remainingLevel;
+  const remainingLevel = remainingLevels.find((level) => level === rawLevel);
+  if (rawLevel != null && remainingLevel === undefined) invalid();
+  return {
+    ...text,
+    ...numbers,
+    remainingLevel: remainingLevel ?? null,
+    components: componentsOf(components),
+  };
 }
 
 export function fromTobaccoRow(row: TobaccoRow) {

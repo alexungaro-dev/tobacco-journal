@@ -99,3 +99,29 @@ test("foundation rows normalize optional fields and reject another owner's refer
     /photos.integrity/,
   );
 });
+
+test("version 1 backups preserve exact grams and visual levels independently", () => {
+  const items = [
+    { ...entry, id: "old", remaining: 27.5 },
+    {
+      ...entry,
+      id: "both",
+      remaining: 0,
+      remainingLevel: "half",
+      status: "sealed",
+    },
+    { ...entry, id: "visual", remaining: null, remainingLevel: "empty" },
+    { ...entry, id: "invalid", remainingLevel: 50 },
+  ];
+  const result = inspectTobaccoBackup(
+    JSON.stringify({ format: tobaccoFormat, version: 1, tobaccos: items }),
+  );
+  assert.equal(result[0].item?.remaining, 27.5);
+  assert.equal(result[0].item?.remainingLevel, null);
+  assert.equal(result[1].item?.remaining, 0);
+  assert.equal(result[1].item?.remainingLevel, "half");
+  assert.equal(result[1].item?.status, "sealed");
+  assert.equal(result[2].item?.remaining, null);
+  assert.equal(result[2].item?.remainingLevel, "empty");
+  assert.equal(result[3].error, "tobaccos.invalid");
+});

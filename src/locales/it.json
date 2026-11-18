@@ -204,6 +204,15 @@
     }
   },
   "tobaccos": {
+    "exactDetails": "Grammi residui esatti (facoltativo)",
+    "levels": {
+      "unspecified": "Non specificata",
+      "full": "Pieno",
+      "almostFull": "Quasi pieno",
+      "half": "Metà",
+      "almostEmpty": "Quasi finito",
+      "empty": "Finito"
+    },
     "search": "Cerca tabacchi",
     "title": "Tabacchi da pipa",
     "intro": "Il tuo catalogo personale e le quantità che hai in dispensa.",
@@ -237,6 +246,7 @@
       "components": "Componenti del blend",
       "package": "Formato confezione",
       "initial": "Quantità iniziale (g)",
+      "remainingLevel": "Livello residuo",
       "remaining": "Quantità residua (g)",
       "date": "Data d’acquisto",
       "price": "Prezzo (€)",
@@ -254,7 +264,7 @@
     "order": {
       "name": "Nome",
       "recent": "Ultima modifica",
-      "remaining": "Quantità residua"
+      "remaining": "Grammi residui esatti"
     }
   }
 }

@@ -657,3 +657,94 @@ button:disabled {
   margin: 6px 0 0;
   color: #ccbb9d;
 }
+
+.tobacco-level-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.tobacco-level-picker legend {
+  padding: 0;
+  color: #ccbb9d;
+}
+
+.tobacco-level-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tobacco-level-options label {
+  position: relative;
+  margin: 0;
+}
+
+.tobacco-level-options input {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tobacco-level-choice {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid #555549;
+  border-radius: 6px;
+  background: #24271f;
+}
+
+.tobacco-level-options input:checked + .tobacco-level-choice {
+  border-color: #d8b16c;
+  background: #373024;
+  color: #f3deba;
+}
+
+.tobacco-level-options input:focus-visible + .tobacco-level-choice {
+  outline: 2px solid #c2a473;
+  outline-offset: 2px;
+}
+
+.tobacco-level-options input:disabled + .tobacco-level-choice {
+  opacity: 0.65;
+}
+
+.tobacco-fill-indicator {
+  display: inline-block;
+  width: 15px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  color: #d8b16c;
+  background: linear-gradient(to top, currentColor var(--fill, 0%), transparent var(--fill, 0%));
+}
+
+.tobacco-fill-indicator[data-level="full"] { --fill: 100%; }
+.tobacco-fill-indicator[data-level="almostFull"] { --fill: 75%; }
+.tobacco-fill-indicator[data-level="half"] { --fill: 50%; }
+.tobacco-fill-indicator[data-level="almostEmpty"] { --fill: 25%; }
+
+.tobacco-level-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tobacco-remaining-exact summary {
+  width: fit-content;
+  padding-block: 11px;
+  color: #ccbb9d;
+  cursor: pointer;
+}
+
+.tobacco-remaining-exact label {
+  max-width: 16rem;
+}

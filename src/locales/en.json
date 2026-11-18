@@ -204,6 +204,15 @@
     }
   },
   "tobaccos": {
+    "exactDetails": "Exact remaining grams (optional)",
+    "levels": {
+      "unspecified": "Unspecified",
+      "full": "Full",
+      "almostFull": "Almost full",
+      "half": "Half full",
+      "almostEmpty": "Almost empty",
+      "empty": "Empty"
+    },
     "search": "Search tobacco",
     "title": "Pipe tobacco",
     "intro": "Your personal catalogue and the quantities you have on hand.",
@@ -237,6 +246,7 @@
       "components": "Blend components",
       "package": "Packaging",
       "initial": "Initial quantity (g)",
+      "remainingLevel": "Remaining fill level",
       "remaining": "Remaining quantity (g)",
       "date": "Purchase date",
       "price": "Price (€)",
@@ -254,7 +264,7 @@
     "order": {
       "name": "Name",
       "recent": "Last updated",
-      "remaining": "Remaining quantity"
+      "remaining": "Exact remaining grams"
     }
   }
 }

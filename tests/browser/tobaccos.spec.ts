@@ -44,6 +44,7 @@ test("tobacco CRUD, components, filters, sorting, private photo and English UI",
   await editor(page).getByLabel("Nome", { exact: true }).fill("Alpha");
   await editor(page).getByLabel("Tipo di miscela").fill("Virginia blend");
   await editor(page).getByLabel("Quantità iniziale (g)").fill("50");
+  await editor(page).getByText("Grammi residui esatti (facoltativo)").click();
   await editor(page).getByLabel("Quantità residua (g)").fill("36.5");
   await editor(page).getByRole("button", { name: "4 su 5" }).click();
   await editor(page)
@@ -124,6 +125,7 @@ test("tobacco CRUD, components, filters, sorting, private photo and English UI",
   expect(api.media).toHaveLength(1);
   expect(api.objects.get(api.media[0].object_path)?.bytes).toEqual(replacement);
   await card(page, "Tobacco Co Alpha").getByRole("button").click();
+  await editor(page).getByText("Grammi residui esatti (facoltativo)").click();
   await editor(page).getByLabel("Quantità residua (g)").fill("0");
   await editor(page)
     .getByRole("button", { name: "Rimuovi fotografia" })

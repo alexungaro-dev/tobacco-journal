@@ -3,8 +3,13 @@
 Aprire **Tabacchi** dopo l'accesso. Il catalogo personale parte vuoto. Marca
 e nome sono obbligatori. Gli altri campi, incluso lo stato, sono facoltativi.
 I componenti comuni sono selezionabili e i componenti personalizzati si possono
-scrivere separati da virgole. Le quantità sono in grammi e si modificano
-dall'editor. Il diario non calcola consumi né viene modificato da questa funzione.
+scrivere separati da virgole. Nell'editor, la quantità iniziale in grammi è
+facoltativa. Per il residuo si può scegliere un livello visivo o inserire i
+grammi esatti nella sezione facoltativa. I due valori sono indipendenti dallo
+stato della confezione e tra loro. I grammi esistenti restano disponibili
+anche se si imposta o si azzera il livello. La scheda mostra prima il livello
+visivo, quando presente. L'ordinamento per grammi usa solo i valori esatti.
+Il diario non calcola consumi né viene modificato da questa funzione.
 
 La ricerca comprende marca, nome, produttore, miscela, componenti e note.
 Le schede si filtrano per miscela o stato e si ordinano per nome, ultima
@@ -15,7 +20,7 @@ libero. I valori numerici sono non negativi e il gradimento è un intero da 1 a 
 
 `public.tobaccos` conserva `brand`, `name`, `blend_type` e `notes` nelle
 colonne esistenti. `extra` contiene produttore, componenti, confezione,
-quantità, data, prezzo, stato, intensità, gradimento e il puntatore della foto
+quantità, livello residuo, data, prezzo, stato, intensità, gradimento e il puntatore della foto
 (`cataloguePhoto`). L'editor mantiene le altre chiavi già presenti in `extra`.
 Le modifiche e le eliminazioni confrontano `updated_at`. In caso di conflitto
 ricaricare il catalogo e controllare la versione attuale prima di ripetere
@@ -39,7 +44,9 @@ conferma della modifica o della cancellazione.
 
 **Esporta dati JSON** salva il catalogo intero, a prescindere dai filtri.
 Il formato è `tobacco-journal-tobaccos` versione 1 e include i campi del
-catalogo e le foto come data URL. I riferimenti privati non vengono esportati.
+catalogo e le foto come data URL. `remaining` conserva i grammi esatti e
+`remainingLevel` il livello visivo. I backup precedenti senza livello
+vengono letti con livello non specificato. I riferimenti privati non vengono esportati.
 Il formato pipe è separato. L'export segnala un errore se una foto privata
 attiva non può essere recuperata.
 

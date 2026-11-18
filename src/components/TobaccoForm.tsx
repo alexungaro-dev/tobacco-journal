@@ -13,9 +13,11 @@ import {
 } from "../data/tobaccos";
 import { PipePhoto, usePhotoPreview, type PrivatePhoto } from "./PipePhoto";
 
+import { RemainingLevelPicker } from "./RemainingLevelPicker";
 import { StarRating } from "./StarRating";
 
-const quantitiesAndPrice = numberFields.filter((field) => field !== "rating");
+const inventoryNumbers = numberFields.filter((field) => field !== "rating");
+const mainNumbers = inventoryNumbers.filter((field) => field !== "remaining");
 
 export function TobaccoForm({
   initial,
@@ -62,7 +64,7 @@ export function TobaccoForm({
         if (busy || checking || error.startsWith("photos.")) return;
         const data = new FormData(event.currentTarget);
         const fields = Object.fromEntries(data);
-        for (const key of quantitiesAndPrice)
+        for (const key of inventoryNumbers)
           Object.assign(fields, {
             [key]: fields[key] === "" ? null : Number(fields[key]),
           });
@@ -71,6 +73,7 @@ export function TobaccoForm({
             ...fields,
             id: id.current,
             rating,
+            remainingLevel: fields.remainingLevel || null,
             components: componentsOf([...selected, ...custom.split(",")]),
           });
           setError("");
@@ -98,7 +101,7 @@ export function TobaccoForm({
               />
             </label>
           ))}
-          {quantitiesAndPrice.map((key) => (
+          {mainNumbers.map((key) => (
             <label className="field" key={key}>
               {t("tobaccos.fields." + key)}
               <input
@@ -125,6 +128,24 @@ export function TobaccoForm({
               ))}
             </select>
           </label>
+          <RemainingLevelPicker initial={initial?.remainingLevel ?? null} />
+          <details className="field full tobacco-remaining-exact">
+            <summary>{t("tobaccos.exactDetails")}</summary>
+            <label className="field">
+              {t("tobaccos.fields.remaining")}
+              <input
+                type="number"
+                min={0}
+                step="any"
+                name="remaining"
+                defaultValue={initial?.remaining ?? ""}
+                onInvalid={(event) => {
+                  const details = event.currentTarget.closest("details");
+                  if (details) details.open = true;
+                }}
+              />
+            </label>
+          </details>
           <StarRating
             label={t("tobaccos.fields.rating")}
             value={rating}
