@@ -143,9 +143,8 @@
     "confirmImport": "Trasferire {{count}} schede nell’account {{email}}? Gli ID esistenti non verranno sovrascritti. Le foto restano nei dati originali della scheda, senza upload nello Storage. I dati locali non verranno cancellati.",
     "progress": "Schede controllate: {{count}} di {{total}}…",
     "result": "Schede verificate nel cloud: {{verified}}. Escluse: {{rejected}}. Conflitti o errori: {{failed}}. Non tentate: {{unattempted}}.",
-    "photosNotUploaded": "Il trasferimento delle fotografie NON è completato. Le foto delle schede verificate restano nei dati originali della scheda; quelle escluse o in errore restano nella sorgente. Conserva il backup. L’upload nello Storage sarà disponibile nella Fase B.",
-    "photoReadOnly": "Le foto legacy sono conservate senza modifiche. Aggiunta, sostituzione e upload di fotografie saranno disponibili nella Fase B.",
-    "footnote": "Catalogo cloud dell’account corrente. Esporta regolarmente un backup JSON. I dati locali originali rimangono nel browser; le fotografie legacy non sono ancora trasferite nello Storage.",
+    "photosNotUploaded": "Il trasferimento delle fotografie NON è completato. Puoi trasferire le immagini verificate dalla sezione Fotografie legacy. Conserva il backup originale.",
+    "footnote": "Catalogo cloud dell’account corrente. Esporta regolarmente un backup JSON.",
     "signInRequired": "Accedi dalla sezione Account per visualizzare le tue pipe. I dati locali esistenti sono conservati e non vengono mostrati senza autenticazione.",
     "preparing": "Preparazione del profilo personale…",
     "profileRequired": "Completa la preparazione del profilo dalla sezione Account prima di usare il catalogo.",
@@ -166,5 +165,31 @@
       "date": "La data di acquisto non è valida. Correggi una copia del backup prima di importare.",
       "duplicate": "ID ripetuto nella sorgente: tutte le occorrenze sono escluse per evitare ambiguità."
     }
+  },
+  "photos": {
+    "choose": "Seleziona fotografia",
+    "replace": "Sostituisci fotografia",
+    "remove": "Rimuovi fotografia",
+    "undo": "Annulla modifica fotografia",
+    "removePending": "La fotografia sarà rimossa dalla scheda al salvataggio.",
+    "validating": "Verifica della fotografia…",
+    "format": "Scegli un’immagine JPEG, PNG o WebP valida.",
+    "size": "La fotografia deve avere una dimensione compresa tra 1 byte e 3 MiB.",
+    "upload": "Caricamento della fotografia non verificato. Riprova.",
+    "read": "Impossibile recuperare la fotografia privata.",
+    "metadata": "Impossibile verificare il record della fotografia.",
+    "integrity": "I dati della fotografia non corrispondono all’immagine attesa.",
+    "cleanup": "La scheda è aggiornata. La pulizia della fotografia precedente non è stata confermata.",
+    "pipeCreated": "La scheda è stata creata. La fotografia è ancora da salvare.",
+    "fallback": "Fotografia privata non disponibile. È mostrata la copia originale.",
+    "migration": "Fotografie legacy",
+    "pending": "Fotografie ancora da trasferire: {{count}}.",
+    "migrate": "Trasferisci fotografie legacy",
+    "migrating": "Trasferimento delle fotografie in corso…",
+    "confirm": "Trasferire {{count}} fotografie nel bucket privato di {{email}}? Le copie originali rimarranno nelle schede.",
+    "result": "Fotografie verificate: {{verified}}. Errori: {{failed}}. Non tentate: {{unattempted}}.",
+    "originalBackup": "Esporta copie originali",
+    "originalBackupHelp": "Il backup completo non è disponibile. Puoi esportare le schede con le copie originali ancora presenti nei dati. Le foto caricate solo nello Storage sono escluse.",
+    "reserved": "La scheda contiene un riferimento interno a Storage. Usa un backup JSON esportato dall’app."
   }
 }

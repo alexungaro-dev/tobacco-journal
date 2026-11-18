@@ -143,9 +143,8 @@
     "confirmImport": "Transfer {{count}} records to account {{email}}? Existing IDs will not be overwritten. Photos stay in the original record data without Storage upload. Local data will not be deleted.",
     "progress": "Records checked: {{count}} of {{total}}…",
     "result": "Records verified in cloud: {{verified}}. Excluded: {{rejected}}. Conflicts or errors: {{failed}}. Not attempted: {{unattempted}}.",
-    "photosNotUploaded": "Photograph migration is NOT complete. Photos in verified records remain in the original record data; excluded or failed photos remain in the source. Keep the backup. Storage uploads will be available in Phase B.",
-    "photoReadOnly": "Legacy photos are retained unchanged. Adding, replacing and uploading photographs will be available in Phase B.",
-    "footnote": "Cloud catalogue for the current account. Export a JSON backup regularly. Original local data stays in the browser; legacy photographs have not been transferred to Storage yet.",
+    "photosNotUploaded": "The photo transfer is incomplete. Use Legacy photos to transfer verified images. Keep the original backup.",
+    "footnote": "Cloud catalogue for the current account. Export a JSON backup regularly.",
     "signInRequired": "Sign in from Account to view your pipes. Existing local data is preserved and is not displayed without authentication.",
     "preparing": "Preparing your personal profile…",
     "profileRequired": "Complete profile preparation in Account before using the catalogue.",
@@ -166,5 +165,31 @@
       "date": "Invalid purchase date. Correct a copy of the backup before importing.",
       "duplicate": "Repeated source ID: all occurrences are excluded to avoid ambiguity."
     }
+  },
+  "photos": {
+    "choose": "Choose photo",
+    "replace": "Replace photo",
+    "remove": "Remove photo",
+    "undo": "Undo photo change",
+    "removePending": "The photo will be removed from the card when you save.",
+    "validating": "Checking photo…",
+    "format": "Choose a valid JPEG, PNG or WebP image.",
+    "size": "The photo must be between 1 byte and 3 MiB.",
+    "upload": "The photo upload could not be verified. Try again.",
+    "read": "The private photo could not be retrieved.",
+    "metadata": "The photo metadata could not be verified.",
+    "integrity": "The photo data does not match the expected image.",
+    "cleanup": "The card was updated. Cleanup of the previous photo could not be confirmed.",
+    "pipeCreated": "The card was created. The photo still needs to be saved.",
+    "fallback": "Private photo unavailable. Showing the original copy.",
+    "migration": "Legacy photos",
+    "pending": "Photos still to transfer: {{count}}.",
+    "migrate": "Transfer legacy photos",
+    "migrating": "Transferring photos…",
+    "confirm": "Transfer {{count}} photos to the private bucket for {{email}}? Original copies will remain in the records.",
+    "result": "Verified photos: {{verified}}. Errors: {{failed}}. Unattempted: {{unattempted}}.",
+    "originalBackup": "Export original copies",
+    "originalBackupHelp": "The complete backup is unavailable. You can export the records with their remaining original copies. Photos stored only in Storage are excluded.",
+    "reserved": "The record contains an internal Storage reference. Use a JSON backup exported by the app."
   }
 }

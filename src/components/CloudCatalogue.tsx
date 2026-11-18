@@ -34,6 +34,9 @@ export function CloudCatalogue({
   const [raw, setRaw] = useState<string | null>(null);
   const [plan, setPlan] = useState<ImportPlan | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [exportFailed, setExportFailed] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [photoResult, setPhotoResult] = useState<ImportResult | null>(null);
   const [progress, setProgress] = useState(0);
   const [reading, setReading] = useState(false);
   const file = useRef<HTMLInputElement>(null);
@@ -45,6 +48,21 @@ export function CloudCatalogue({
     };
   }, []);
   const close = useCallback(() => setEditing(undefined), []);
+  const privatePhoto = (id: string) => ({
+    ...cloud.photo(id),
+    read: cloud.readPhoto,
+  });
+  async function migratePhotos() {
+    if (!window.confirm(t("photos.confirm", { count: cloud.pending, email })))
+      return;
+    setPhotoResult(null);
+    setMigrating(true);
+    const result = await cloud.migratePhotos();
+    if (alive.current) {
+      setMigrating(false);
+      if (result) setPhotoResult(result);
+    }
+  }
   const disabled = cloud.loading || cloud.busy || reading;
   const query = search.toLocaleLowerCase(i18n.language);
   const filtered = cloud.pipes.filter(
@@ -103,7 +121,7 @@ export function CloudCatalogue({
         </button>
       </section>
       {cloud.loading && <p role="status">{t("cloud.loading")}</p>}
-      {(cloud.error || notice) && (
+      {((cloud.error && editing === undefined) || notice) && (
         <div className="notice" role="alert">
           {cloud.error && <p>{t(cloud.error)}</p>}
           {notice && <p>{t(notice)}</p>}
@@ -118,6 +136,9 @@ export function CloudCatalogue({
             {t("cloud.reload")}
           </button>
         </div>
+      )}
+      {cloud.warning && editing === undefined && (
+        <p role="status">{t(cloud.warning)}</p>
       )}
       {message && <p role="status">{t(message)}</p>}
       <div className="controls">
@@ -151,6 +172,7 @@ export function CloudCatalogue({
           <PipeCard
             key={p.id}
             pipe={p}
+            photo={privatePhoto(p.id)}
             onEdit={() => {
               if (!disabled) setEditing(p);
             }}
@@ -170,9 +192,13 @@ export function CloudCatalogue({
         <button
           className="btn secondary"
           disabled={disabled || !!cloud.error}
-          onClick={() =>
-            download(createBackup(cloud.pipes), "tobacco-journal-cloud.json")
-          }
+          onClick={async () => {
+            setExportFailed(false);
+            const backup = await cloud.exportBackup();
+            if (!alive.current) return;
+            if (backup) download(backup, "tobacco-journal-cloud.json");
+            else setExportFailed(true);
+          }}
         >
           {t("export")}
         </button>
@@ -233,6 +259,57 @@ export function CloudCatalogue({
           }}
         />
       </div>
+      {exportFailed && (
+        <div className="notice" role="status">
+          <p>{t("photos.originalBackupHelp")}</p>
+          <button
+            className="btn secondary"
+            disabled={disabled}
+            onClick={() =>
+              download(
+                createBackup(cloud.pipes),
+                "tobacco-journal-originals.json",
+              )
+            }
+          >
+            {t("photos.originalBackup")}
+          </button>
+        </div>
+      )}
+      {!cloud.loading && (
+        <section className="migration" aria-label={t("photos.migration")}>
+          <h2>{t("photos.migration")}</h2>
+          <p>{t("photos.pending", { count: cloud.pending })}</p>
+          <button
+            className="btn secondary"
+            disabled={disabled || !cloud.pending}
+            onClick={() => void migratePhotos()}
+          >
+            {t("photos.migrate")}
+          </button>
+          {migrating && <p role="status">{t("photos.migrating")}</p>}
+          {photoResult && (
+            <div role="status">
+              <p>
+                {t("photos.result", {
+                  verified: photoResult.verified,
+                  failed: photoResult.failures.length,
+                  unattempted: photoResult.unattempted,
+                })}
+              </p>
+              {!!photoResult.failures.length && (
+                <ul>
+                  {photoResult.failures.map((failure) => (
+                    <li key={failure.label}>
+                      {failure.label}: {t(failure.reason)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+        </section>
+      )}
       {sourceError && (
         <div className="notice" role="alert">
           {t(sourceError)}
@@ -337,12 +414,14 @@ export function CloudCatalogue({
       {editing !== undefined && (
         <PipeForm
           pipe={editing}
+          privatePhoto={privatePhoto(editing?.id ?? "")}
+          warning={cloud.warning}
           onClose={close}
           busy={cloud.busy}
           error={cloud.error}
-          onSave={async (p) => {
+          onSave={async (p, photo) => {
             const existed = cloud.pipes.some((x) => x.id === p.id);
-            if (await cloud.save(p)) {
+            if (await cloud.save(p, photo)) {
               if (alive.current) {
                 close();
                 setMessage(existed ? "updated" : "added");

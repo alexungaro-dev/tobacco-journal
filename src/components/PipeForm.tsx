@@ -1,23 +1,55 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { validatePhoto, PHOTO_TYPES, type PhotoEdit } from "../data/pipePhotos";
+import { cloudErrorKey } from "../data/pipeMapping";
+import { PipePhoto, usePhotoPreview, type PrivatePhoto } from "./PipePhoto";
 import type { Pipe } from "../types";
 export function PipeForm({
   pipe,
   onSave,
+  privatePhoto,
+  warning,
   onDelete,
   onClose,
   busy,
   error: cloudError,
 }: {
   pipe: Pipe | null;
-  onSave: (p: Pipe) => Promise<boolean>;
+  onSave: (p: Pipe, photo: PhotoEdit) => Promise<boolean>;
+  privatePhoto: PrivatePhoto;
+  warning: string;
   onDelete: (p: Pipe) => Promise<void>;
   busy: boolean;
   error: string;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const photo = pipe?.photo || null;
+  const [edit, setEdit] = useState<PhotoEdit>();
+  const [validating, setValidating] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const selection = useRef(0);
+  useEffect(
+    () => () => {
+      selection.current++;
+    },
+    [],
+  );
+  const preview = usePhotoPreview(edit || undefined);
+  const hasPhoto =
+    !!privatePhoto.ref || (privatePhoto.ref === undefined && !!pipe?.photo);
+  async function choose(file: File) {
+    const current = ++selection.current;
+    setValidating(true);
+    setPhotoError("");
+    try {
+      await validatePhoto(file);
+      if (selection.current === current) setEdit(file);
+    } catch (failure) {
+      if (selection.current === current) setPhotoError(cloudErrorKey(failure));
+    } finally {
+      if (selection.current === current) setValidating(false);
+    }
+  }
   const newId = useRef(crypto.randomUUID());
   const busyRef = useRef(busy);
   busyRef.current = busy;
@@ -77,7 +109,7 @@ export function PipeForm({
         <form
           onSubmit={async (e) => {
             e.preventDefault();
-            if (busy) return;
+            if (busy || validating || photoError) return;
             setError("");
             const data = new FormData(e.currentTarget);
             const value = (k: string) => String(data.get(k) || "").trim();
@@ -98,11 +130,10 @@ export function PipeForm({
               date: value("date"),
               price: value("price") === "" ? null : Number(value("price")),
               notes: value("notes"),
-              photo,
               createdAt: pipe?.createdAt || now,
               updatedAt: now,
             };
-            await onSave(next);
+            await onSave(next, edit);
           }}
         >
           <fieldset className="pipefields" disabled={busy}>
@@ -191,13 +222,72 @@ export function PipeForm({
                 />
               </div>
               <div className="field full">
-                <span>{t("fields.photo")}</span>
-                <p className="accountnote">{t("cloud.photoReadOnly")}</p>
-                {photo && (
-                  <img className="preview" src={photo} alt={t("preview")} />
+                <label htmlFor="pipephoto">
+                  {t(hasPhoto ? "photos.replace" : "photos.choose")}
+                </label>
+                <input
+                  type="file"
+                  id="pipephoto"
+                  accept={PHOTO_TYPES.join(",")}
+                  onChange={(event) => {
+                    const input = event.currentTarget;
+                    const file = input.files?.[0];
+                    input.value = "";
+                    if (file) void choose(file);
+                  }}
+                />
+                {validating && <p role="status">{t("photos.validating")}</p>}
+                {photoError && (
+                  <p className="formerror" role="alert">
+                    {t(photoError)}
+                  </p>
                 )}
+                {preview && (
+                  <img className="preview" src={preview} alt={t("preview")} />
+                )}
+                {edit === undefined && pipe && (
+                  <PipePhoto
+                    id={pipe.id}
+                    photo={privatePhoto}
+                    legacy={pipe.photo}
+                    alt={t("preview")}
+                    editor
+                  />
+                )}
+                {edit === null && (
+                  <p role="status">{t("photos.removePending")}</p>
+                )}
+                <div className="cloudtools">
+                  {(hasPhoto || edit) && edit !== null && (
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      disabled={validating}
+                      onClick={() => {
+                        setPhotoError("");
+                        setEdit(hasPhoto ? null : undefined);
+                      }}
+                    >
+                      {t("photos.remove")}
+                    </button>
+                  )}
+                  {(edit !== undefined || photoError) && (
+                    <button
+                      type="button"
+                      className="btn secondary"
+                      disabled={validating}
+                      onClick={() => {
+                        setPhotoError("");
+                        setEdit(undefined);
+                      }}
+                    >
+                      {t("photos.undo")}
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
+            {warning && <p role="status">{t(warning)}</p>}
             {(error || cloudError) && (
               <p className="formerror" role="alert">
                 {error || t(cloudError)}
@@ -221,7 +311,11 @@ export function PipeForm({
                 >
                   {t("cancel")}
                 </button>
-                <button type="submit" className="btn" disabled={busy}>
+                <button
+                  type="submit"
+                  className="btn"
+                  disabled={busy || validating || !!photoError}
+                >
                   {t("save")}
                 </button>
               </div>

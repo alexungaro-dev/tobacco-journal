@@ -1,4 +1,5 @@
 import type { Pipe } from "../types";
+export const PHOTO_STATE = "_tobaccoJournalStoragePhoto";
 export const PIPES_KEY = "tj-pipes-v1";
 export const MAX_BACKUP_BYTES = 20 * 1024 * 1024;
 export interface StorageLike {
@@ -28,7 +29,7 @@ export function isPipe(value: unknown): value is Pipe {
     (p.photo == null ||
       p.photo === "" ||
       (typeof p.photo === "string" &&
-        /^data:image\/(png|jpeg|webp);base64,/.test(p.photo)))
+        /^data:image\/[a-z0-9.+-]+;base64,/i.test(p.photo)))
   );
 }
 function validatePipes(value: unknown): Pipe[] {
