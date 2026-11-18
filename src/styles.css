@@ -573,3 +573,178 @@ button:disabled {
 .field .photostatus {
   position: static;
 }
+
+.tobacco-editor {
+  margin: 0 auto 1rem;
+  max-height: none;
+}
+
+.tobacco-components {
+  border: 0;
+  padding: 0;
+}
+
+.tobacco-components > label:not(.field) {
+  display: inline-block;
+  margin: .2rem .8rem .4rem 0;
+}
+
+.tobacco-components input[type="checkbox"] {
+  width: auto;
+  accent-color: #c2a473;
+}
+
+.tobacco-details {
+  overflow-wrap: anywhere;
+}
+
+.tobacco-details div {
+  margin-block: .4rem;
+}
+
+.tobacco-details dt {
+  font-weight: 600;
+}
+
+.tobacco-details dd {
+  margin-inline-start: 0;
+  white-space: pre-wrap;
+}
+
+.star-rating {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.star-rating legend {
+  padding: 0;
+  color: #ccbb9d;
+}
+
+.star-rating-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.star-rating-buttons button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #555549;
+  border-radius: 6px;
+  background: #24271f;
+  color: #ccbb9d;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.star-rating-buttons button[data-filled="true"] {
+  color: #d8b16c;
+}
+
+.star-rating-buttons button:enabled:hover {
+  border-color: #c2a473;
+}
+
+.star-rating-buttons button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.star-rating-summary {
+  margin: 6px 0 0;
+  color: #ccbb9d;
+}
+
+.tobacco-level-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.tobacco-level-picker legend {
+  padding: 0;
+  color: #ccbb9d;
+}
+
+.tobacco-level-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.tobacco-level-options label {
+  position: relative;
+  margin: 0;
+}
+
+.tobacco-level-options input {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.tobacco-level-choice {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border: 1px solid #555549;
+  border-radius: 6px;
+  background: #24271f;
+}
+
+.tobacco-level-options input:checked + .tobacco-level-choice {
+  border-color: #d8b16c;
+  background: #373024;
+  color: #f3deba;
+}
+
+.tobacco-level-options input:focus-visible + .tobacco-level-choice {
+  outline: 2px solid #c2a473;
+  outline-offset: 2px;
+}
+
+.tobacco-level-options input:disabled + .tobacco-level-choice {
+  opacity: 0.65;
+}
+
+.tobacco-fill-indicator {
+  display: inline-block;
+  width: 15px;
+  height: 18px;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  color: #d8b16c;
+  background: linear-gradient(to top, currentColor var(--fill, 0%), transparent var(--fill, 0%));
+}
+
+.tobacco-fill-indicator[data-level="full"] { --fill: 100%; }
+.tobacco-fill-indicator[data-level="almostFull"] { --fill: 75%; }
+.tobacco-fill-indicator[data-level="half"] { --fill: 50%; }
+.tobacco-fill-indicator[data-level="almostEmpty"] { --fill: 25%; }
+
+.tobacco-level-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tobacco-remaining-exact summary {
+  width: fit-content;
+  padding-block: 11px;
+  color: #ccbb9d;
+  cursor: pointer;
+}
+
+.tobacco-remaining-exact label {
+  max-width: 16rem;
+}

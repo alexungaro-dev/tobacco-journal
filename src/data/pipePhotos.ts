@@ -20,10 +20,18 @@ function photoType(type: string): type is PhotoType {
 }
 
 export function photoState(row: PipeRow): PhotoRef | null | undefined {
-  if (!Object.hasOwn(row.legacy_payload, PHOTO_STATE)) return undefined;
-  const ref = row.legacy_payload[PHOTO_STATE] as PhotoRef | null;
+  return privatePhotoRef(row.legacy_payload[PHOTO_STATE], row.user_id, "pipe");
+}
+
+export function privatePhotoRef(
+  value: unknown,
+  owner: string,
+  kind: "pipe" | "tobacco",
+) {
+  if (value === undefined) return undefined;
+  const ref = value as PhotoRef | null;
   if (ref === null) return null;
-  const prefix = row.user_id + "/pipe-photos/";
+  const prefix = owner + "/" + kind + "-photos/";
   if (
     !ref ||
     typeof ref.path !== "string" ||
@@ -97,7 +105,7 @@ export async function validatePhoto(blob: Blob, decode = decodeImage) {
   return { mime: blob.type, size: blob.size, sha256: await digest(buffer) };
 }
 
-function dataUrl(blob: Blob): Promise<string> {
+export function dataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -112,16 +120,21 @@ export class PipePhotos {
     private userId: string,
     private signal: AbortSignal,
     private guard: () => Promise<void>,
+    private kind: "pipe" | "tobacco" = "pipe",
   ) {}
 
   private get bucket() {
     return this.client.storage.from(PHOTO_BUCKET);
   }
 
+  private get link() {
+    return this.kind === "pipe" ? "pipe_id" : "tobacco_id";
+  }
+
   private metadata(pipeId: string, ref: PhotoRef) {
     return {
       user_id: this.userId,
-      pipe_id: pipeId,
+      [this.link]: pipeId,
       bucket_id: PHOTO_BUCKET,
       object_path: ref.path,
       mime_type: ref.mime,
@@ -157,10 +170,12 @@ export class PipePhotos {
     await this.guard();
     const { data, error } = await this.client
       .from("media")
-      .select("user_id,pipe_id,bucket_id,object_path,mime_type,size_bytes")
+      .select(
+        "user_id,pipe_id,tobacco_id,bucket_id,object_path,mime_type,size_bytes",
+      )
       .match({
         user_id: this.userId,
-        pipe_id: pipeId,
+        [this.link]: pipeId,
         bucket_id: PHOTO_BUCKET,
         object_path: ref.path,
       })
@@ -171,7 +186,7 @@ export class PipePhotos {
     if (
       !data ||
       (Object.keys(expected) as (keyof typeof expected)[]).some(
-        (key) => data[key] !== expected[key],
+        (key) => (data as Record<string, unknown>)[key] !== expected[key],
       )
     )
       throw new CloudError("photos.metadata");
@@ -179,7 +194,7 @@ export class PipePhotos {
   }
 
   async stage(
-    row: PipeRow,
+    row: Pick<PipeRow, "id" | "created_at" | "updated_at">,
     blob: Blob,
     source: "edit" | "legacy" = "edit",
   ): Promise<PhotoRef> {
@@ -198,7 +213,10 @@ export class PipePhotos {
         ]),
       ),
     );
-    const ref = { ...image, path: `${this.userId}/pipe-photos/${token}` };
+    const ref = {
+      ...image,
+      path: `${this.userId}/${this.kind}-photos/${token}`,
+    };
     const bytes = await blob.arrayBuffer();
     await this.guard();
     let uploadFailed = false;
@@ -246,7 +264,7 @@ export class PipePhotos {
         .delete()
         .match({
           user_id: this.userId,
-          pipe_id: pipeId,
+          [this.link]: pipeId,
           bucket_id: PHOTO_BUCKET,
           object_path: ref.path,
         })

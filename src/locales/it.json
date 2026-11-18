@@ -191,5 +191,80 @@
     "originalBackup": "Esporta copie originali",
     "originalBackupHelp": "Il backup completo non è disponibile. Puoi esportare le schede con le copie originali ancora presenti nei dati. Le foto caricate solo nello Storage sono escluse.",
     "reserved": "La scheda contiene un riferimento interno a Storage. Usa un backup JSON esportato dall’app."
+  },
+  "starRating": {
+    "option": "{{score}} su 5",
+    "description": {
+      "0": "Nessuna valutazione",
+      "1": "Per niente gradito",
+      "2": "Poco gradito",
+      "3": "Discreto",
+      "4": "Molto gradito",
+      "5": "Eccellente"
+    }
+  },
+  "tobaccos": {
+    "exactDetails": "Grammi residui esatti (facoltativo)",
+    "levels": {
+      "unspecified": "Non specificata",
+      "full": "Pieno",
+      "almostFull": "Quasi pieno",
+      "half": "Metà",
+      "almostEmpty": "Quasi finito",
+      "empty": "Finito"
+    },
+    "search": "Cerca tabacchi",
+    "title": "Tabacchi da pipa",
+    "intro": "Il tuo catalogo personale e le quantità che hai in dispensa.",
+    "add": "Aggiungi tabacco",
+    "edit": "Modifica tabacco",
+    "empty": "Il catalogo tabacchi è vuoto.",
+    "working": "Operazione in corso…",
+    "custom": "Altri componenti, separati da virgole",
+    "allBlends": "Tutte le miscele",
+    "sort": "Ordina per",
+    "oriental": "Orientale",
+    "saved": "Tabacco salvato.",
+    "deleted": "Tabacco eliminato.",
+    "confirmDelete": "Eliminare {{name}} dal catalogo?",
+    "invalid": "Verifica i campi del tabacco. Marca e nome sono obbligatori.",
+    "invalidBackup": "Scegli un backup JSON del catalogo tabacchi in formato versione 1.",
+    "duplicate": "ID duplicato. La scheda esistente è stata conservata.",
+    "pendingPhoto": "Foto del backup in attesa di caricamento. Ripeti l’importazione per completarla.",
+    "partial": "La scheda del tabacco è stata creata. La fotografia è ancora da salvare.",
+    "importTitle": "Importa catalogo tabacchi",
+    "importPlan": "Schede da controllare: {{valid}}. Escluse dal file: {{rejected}}.",
+    "backupFirst": "Scarica backup prima dell’importazione",
+    "transfer": "Conferma importazione tabacchi",
+    "confirmImport": "Importare le schede nell’account {{email}}? Le schede esistenti non saranno sovrascritte.",
+    "importResult": "Importate: {{imported}}. Errori o duplicati: {{failed}}. Non tentate: {{unattempted}}.",
+    "fields": {
+      "brand": "Marca",
+      "name": "Nome",
+      "producer": "Produttore",
+      "blend": "Tipo di miscela",
+      "components": "Componenti del blend",
+      "package": "Formato confezione",
+      "initial": "Quantità iniziale (g)",
+      "remainingLevel": "Livello residuo",
+      "remaining": "Quantità residua (g)",
+      "date": "Data d’acquisto",
+      "price": "Prezzo (€)",
+      "status": "Stato",
+      "intensity": "Intensità",
+      "rating": "Gradimento personale",
+      "notes": "Note personali"
+    },
+    "states": {
+      "sealed": "Sigillato",
+      "opened": "Aperto",
+      "finished": "Terminato",
+      "archived": "Archiviato"
+    },
+    "order": {
+      "name": "Nome",
+      "recent": "Ultima modifica",
+      "remaining": "Grammi residui esatti"
+    }
   }
 }

@@ -191,5 +191,80 @@
     "originalBackup": "Export original copies",
     "originalBackupHelp": "The complete backup is unavailable. You can export the records with their remaining original copies. Photos stored only in Storage are excluded.",
     "reserved": "The record contains an internal Storage reference. Use a JSON backup exported by the app."
+  },
+  "starRating": {
+    "option": "{{score}} out of 5",
+    "description": {
+      "0": "No rating",
+      "1": "Very poor",
+      "2": "Poor",
+      "3": "Fair",
+      "4": "Very good",
+      "5": "Excellent"
+    }
+  },
+  "tobaccos": {
+    "exactDetails": "Exact remaining grams (optional)",
+    "levels": {
+      "unspecified": "Unspecified",
+      "full": "Full",
+      "almostFull": "Almost full",
+      "half": "Half full",
+      "almostEmpty": "Almost empty",
+      "empty": "Empty"
+    },
+    "search": "Search tobacco",
+    "title": "Pipe tobacco",
+    "intro": "Your personal catalogue and the quantities you have on hand.",
+    "add": "Add tobacco",
+    "edit": "Edit tobacco",
+    "empty": "Your tobacco catalogue is empty.",
+    "working": "Working…",
+    "custom": "Other components, separated by commas",
+    "allBlends": "All blends",
+    "sort": "Sort by",
+    "oriental": "Oriental",
+    "saved": "Tobacco saved.",
+    "deleted": "Tobacco deleted.",
+    "confirmDelete": "Delete {{name}} from your catalogue?",
+    "invalid": "Check the tobacco fields. Brand and name are required.",
+    "invalidBackup": "Choose a version 1 JSON backup of the tobacco catalogue.",
+    "duplicate": "Duplicate ID. The existing record was kept.",
+    "pendingPhoto": "The backup photo is waiting to upload. Repeat the import to finish.",
+    "partial": "The tobacco record was created. The photo still needs to be saved.",
+    "importTitle": "Import tobacco catalogue",
+    "importPlan": "Records to check: {{valid}}. Excluded from file: {{rejected}}.",
+    "backupFirst": "Download backup before importing",
+    "transfer": "Confirm tobacco import",
+    "confirmImport": "Import the records into {{email}}? Existing records will be kept.",
+    "importResult": "Imported: {{imported}}. Errors or duplicates: {{failed}}. Unattempted: {{unattempted}}.",
+    "fields": {
+      "brand": "Brand",
+      "name": "Name",
+      "producer": "Producer",
+      "blend": "Blend type",
+      "components": "Blend components",
+      "package": "Packaging",
+      "initial": "Initial quantity (g)",
+      "remainingLevel": "Remaining fill level",
+      "remaining": "Remaining quantity (g)",
+      "date": "Purchase date",
+      "price": "Price (€)",
+      "status": "Status",
+      "intensity": "Intensity",
+      "rating": "Personal rating",
+      "notes": "Personal notes"
+    },
+    "states": {
+      "sealed": "Sealed",
+      "opened": "Opened",
+      "finished": "Finished",
+      "archived": "Archived"
+    },
+    "order": {
+      "name": "Name",
+      "recent": "Last updated",
+      "remaining": "Exact remaining grams"
+    }
   }
 }

@@ -119,12 +119,12 @@ export function fromRow(row: PipeRow, userId: string): Pipe {
   if (!isPipe(p)) throw new CloudError("cloud.errors.response");
   return p;
 }
-function stable(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stable).join(",")}]`;
+export function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
   if (value && typeof value === "object")
     return `{${Object.entries(value)
       .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([k, v]) => JSON.stringify(k) + ":" + stable(v))
+      .map(([k, v]) => JSON.stringify(k) + ":" + stableJson(v))
       .join(",")}}`;
   return JSON.stringify(value);
 }
@@ -137,11 +137,11 @@ export function matchesImport(
     actual.legacy_payload ?? {};
   return Object.entries(expected).every(
     ([key, value]) =>
-      stable(
+      stableJson(
         ignorePhotoState && key === "legacy_payload"
           ? payload
           : actual[key as keyof PipeRow],
-      ) === stable(value),
+      ) === stableJson(value),
   );
 }
 export interface ImportItem {

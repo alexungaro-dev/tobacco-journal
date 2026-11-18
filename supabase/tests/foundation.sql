@@ -32,6 +32,12 @@ insert into public.smoking_sessions(id,kind,cigar_id) values ('sc','cigar','c');
 insert into public.media(id,object_path,mime_type,size_bytes,pipe_id)
 values ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',auth.uid()::text || '/photo.jpg','image/jpeg',123,'legacy-id');
 insert into storage.objects(bucket_id,name) values ('journal-photos',auth.uid()::text || '/photo.jpg');
+insert into public.media(object_path,mime_type,size_bytes,tobacco_id)
+values (auth.uid()::text || '/tobacco-photos/t','image/png',123,'t');
+insert into storage.objects(bucket_id,name)
+values ('journal-photos',auth.uid()::text || '/tobacco-photos/t');
+select pg_temp.assert_true((select count(*)=1 from public.media where tobacco_id='t'), 'owner links tobacco photo');
+select pg_temp.expect_error($q$delete from public.tobaccos where id='t'$q$, '23503');
 select pg_temp.expect_error($q$insert into public.pipes(id,user_id,brand,model) values ('forged','22222222-2222-2222-2222-222222222222','B','M')$q$, '42501');
 select pg_temp.expect_error($q$update public.pipes set user_id = '22222222-2222-2222-2222-222222222222'$q$, '42501');
 select pg_temp.expect_error($q$insert into public.pipes(brand,model,price) values ('B','M',-1)$q$, '23514');
@@ -82,6 +88,9 @@ select pg_temp.expect_error($q$insert into public.smoking_sessions(kind,cigar_id
 insert into public.pipes(id,brand,model) values ('own-pipe','B','M');
 select pg_temp.expect_error($q$insert into public.smoking_sessions(kind,pipe_id,tobacco_id) values ('pipe','own-pipe','t')$q$, '23503');
 select pg_temp.expect_error($q$insert into public.media(object_path,mime_type,size_bytes,smoking_session_id) values ('22222222-2222-2222-2222-222222222222/session','image/png',1,'s')$q$, '23503');
+select pg_temp.expect_error($q$insert into public.media(object_path,mime_type,size_bytes,tobacco_id) values ('22222222-2222-2222-2222-222222222222/tobacco-photos/t','image/png',1,'t')$q$, '23503');
+insert into public.tobaccos(id,brand,name) values ('t','B','Own batch');
+select pg_temp.assert_true((select count(*)=1 from public.tobaccos where id='t'), 'same tobacco ID allowed across users');
 with changed as (update storage.objects set name='22222222-2222-2222-2222-222222222222/stolen' returning *)
 select pg_temp.assert_true((select count(*)=0 from changed), 'foreign photo update blocked');
 with removed as (delete from storage.objects returning *)
@@ -92,13 +101,15 @@ select pg_temp.assert_true((select count(*)=1 from public.pipes), 'same legacy I
 select set_config('request.jwt.claim.sub', '11111111-1111-1111-1111-111111111111', true);
 update public.pipes set model='updated', updated_at='2000-01-01' where id='legacy-id';
 select pg_temp.assert_true((select updated_at = now() from public.pipes where id='legacy-id'), 'timestamp trigger');
-update storage.objects set name=auth.uid()::text || '/renamed.jpg';
-select pg_temp.expect_error($q$update storage.objects set name='22222222-2222-2222-2222-222222222222/moved.jpg'$q$, '42501');
+update storage.objects set name=auth.uid()::text || '/renamed.jpg' where name=auth.uid()::text || '/photo.jpg';
+select pg_temp.expect_error($q$update storage.objects set name='22222222-2222-2222-2222-222222222222/moved.jpg' where name like '%/renamed.jpg'$q$, '42501');
 delete from storage.objects;
 select pg_temp.assert_true((select count(*)=0 from storage.objects), 'owner photo CRUD');
 delete from public.smoking_sessions;
 delete from public.pipes;
-select pg_temp.assert_true((select count(*)=0 from public.media), 'media metadata cascades with pipe');
+select pg_temp.assert_true((select count(*)=0 from public.media where pipe_id is not null), 'media metadata cascades with pipe');
+delete from public.tobaccos where id='t';
+select pg_temp.assert_true((select count(*)=0 from public.media where tobacco_id is not null), 'media metadata cascades with tobacco');
 set local role anon;
 select pg_temp.expect_error('select * from public.pipes', '42501');
 reset role;
