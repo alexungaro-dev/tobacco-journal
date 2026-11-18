@@ -37,6 +37,12 @@ values (auth.uid()::text || '/tobacco-photos/t','image/png',123,'t');
 insert into storage.objects(bucket_id,name)
 values ('journal-photos',auth.uid()::text || '/tobacco-photos/t');
 select pg_temp.assert_true((select count(*)=1 from public.media where tobacco_id='t'), 'owner links tobacco photo');
+insert into public.media(object_path,mime_type,size_bytes,cigar_id)
+values (auth.uid()::text || '/cigar-photos/c','image/png',123,'c');
+insert into storage.objects(bucket_id,name)
+values ('journal-photos',auth.uid()::text || '/cigar-photos/c');
+select pg_temp.assert_true((select count(*)=1 from public.media where cigar_id='c'), 'owner links cigar photo');
+select pg_temp.expect_error($q$delete from public.cigars where id='c'$q$, '23503');
 select pg_temp.expect_error($q$delete from public.tobaccos where id='t'$q$, '23503');
 select pg_temp.expect_error($q$insert into public.pipes(id,user_id,brand,model) values ('forged','22222222-2222-2222-2222-222222222222','B','M')$q$, '42501');
 select pg_temp.expect_error($q$update public.pipes set user_id = '22222222-2222-2222-2222-222222222222'$q$, '42501');
@@ -91,6 +97,9 @@ select pg_temp.expect_error($q$insert into public.media(object_path,mime_type,si
 select pg_temp.expect_error($q$insert into public.media(object_path,mime_type,size_bytes,tobacco_id) values ('22222222-2222-2222-2222-222222222222/tobacco-photos/t','image/png',1,'t')$q$, '23503');
 insert into public.tobaccos(id,brand,name) values ('t','B','Own batch');
 select pg_temp.assert_true((select count(*)=1 from public.tobaccos where id='t'), 'same tobacco ID allowed across users');
+select pg_temp.expect_error($q$insert into public.media(object_path,mime_type,size_bytes,cigar_id) values ('22222222-2222-2222-2222-222222222222/cigar-photos/c','image/png',1,'c')$q$, '23503');
+insert into public.cigars(id,brand,name) values ('c','B','Own cigar');
+select pg_temp.assert_true((select count(*)=1 from public.cigars where id='c'), 'same cigar ID allowed across users');
 with changed as (update storage.objects set name='22222222-2222-2222-2222-222222222222/stolen' returning *)
 select pg_temp.assert_true((select count(*)=0 from changed), 'foreign photo update blocked');
 with removed as (delete from storage.objects returning *)
@@ -110,6 +119,8 @@ delete from public.pipes;
 select pg_temp.assert_true((select count(*)=0 from public.media where pipe_id is not null), 'media metadata cascades with pipe');
 delete from public.tobaccos where id='t';
 select pg_temp.assert_true((select count(*)=0 from public.media where tobacco_id is not null), 'media metadata cascades with tobacco');
+delete from public.cigars where id='c';
+select pg_temp.assert_true((select count(*)=0 from public.media where cigar_id is not null), 'media metadata cascades with cigar');
 set local role anon;
 select pg_temp.expect_error('select * from public.pipes', '42501');
 reset role;

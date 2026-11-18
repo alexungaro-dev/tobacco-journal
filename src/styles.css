@@ -748,3 +748,20 @@ button:disabled {
 .tobacco-remaining-exact label {
   max-width: 16rem;
 }
+
+.cigar-advanced {
+  border-block: 1px solid #424339;
+  padding-block: 8px 12px;
+}
+
+.cigar-advanced summary {
+  padding-block: 10px;
+  color: #ccbb9d;
+  cursor: pointer;
+}
+
+.cigar-advanced small {
+  display: block;
+  margin-top: 6px;
+  color: #ccbb9d;
+}

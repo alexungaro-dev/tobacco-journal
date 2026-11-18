@@ -78,13 +78,28 @@ export function tobaccoRow(owner = OWNER_A, id = "t1", name = "Mixture") {
     updated_at: "2026-11-16T16:00:00.000Z",
   };
 }
+export function cigarRow(owner = OWNER_A, id = "c1", name = "Reserva") {
+  return {
+    id,
+    user_id: owner,
+    brand: "Example",
+    name,
+    vitola: "Toro",
+    notes: null,
+    extra: { country: "Honduras", remaining: 12 } as Record<string, unknown>,
+    created_at: "2026-11-16T16:00:00.000Z",
+    updated_at: "2026-11-16T16:00:00.000Z",
+  };
+}
 export async function cloudMock(
   page: Page,
   initial: ReturnType<typeof row>[] = [],
   initialTobaccos: ReturnType<typeof tobaccoRow>[] = [],
+  initialCigars: ReturnType<typeof cigarRow>[] = [],
 ) {
   const rows = structuredClone(initial);
   const tobaccos = structuredClone(initialTobaccos);
+  const cigars = structuredClone(initialCigars);
   const objects = new Map<string, { bytes: Buffer; type: string }>();
   const media: Record<string, any>[] = [];
   let photoFault = "";
@@ -217,11 +232,17 @@ export async function cloudMock(
         (method === "POST"
           ? body.user_id !== owner ||
             !body.object_path.startsWith(owner + "/") ||
-            !(body.tobacco_id
-              ? tobaccos.some(
-                  (r) => r.user_id === owner && r.id === body.tobacco_id,
+            !(body.cigar_id
+              ? cigars.some(
+                  (r) => r.user_id === owner && r.id === body.cigar_id,
                 )
-              : rows.some((r) => r.user_id === owner && r.id === body.pipe_id))
+              : body.tobacco_id
+                ? tobaccos.some(
+                    (r) => r.user_id === owner && r.id === body.tobacco_id,
+                  )
+                : rows.some(
+                    (r) => r.user_id === owner && r.id === body.pipe_id,
+                  ))
           : url.searchParams.get("user_id") !== `eq.${owner}`)
       ) {
         status = 403;
@@ -245,13 +266,24 @@ export async function cloudMock(
         const selected = media.filter(
           (m) =>
             m.user_id === owner &&
-            filters.every(([key, value]) => m[key] === value.slice(3)),
+            filters.every(([key, value]) => m[key] === value.slice(3)) &&
+            (!url.searchParams.has("object_path") ||
+              !url.searchParams.get("object_path")?.startsWith("gt.") ||
+              m.object_path > url.searchParams.get("object_path")!.slice(3)),
         );
+        if (url.searchParams.has("order"))
+          selected.sort((a, b) => a.object_path.localeCompare(b.object_path));
         if (method === "DELETE")
           selected.forEach((m) => media.splice(media.indexOf(m), 1));
         data = selected;
       }
-    } else if (url.pathname === "/rest/v1/tobaccos") {
+    } else if (
+      url.pathname === "/rest/v1/tobaccos" ||
+      url.pathname === "/rest/v1/cigars"
+    ) {
+      const cigar = url.pathname.endsWith("/cigars");
+      const inventory = cigar ? cigars : tobaccos;
+      const link = cigar ? "cigar_id" : "tobacco_id";
       if (
         !owner ||
         (method !== "POST" &&
@@ -267,7 +299,7 @@ export async function cloudMock(
       } else {
         const revision = url.searchParams.get("updated_at");
         const id = url.searchParams.get("id");
-        const selected = tobaccos.filter(
+        const selected = inventory.filter(
           (r) =>
             r.user_id === owner &&
             (!id ||
@@ -281,7 +313,7 @@ export async function cloudMock(
         if (method === "GET") {
           data = selected.sort((a, b) => a.id.localeCompare(b.id)).slice(0, 2);
         } else if (method === "POST") {
-          if (tobaccos.some((r) => r.user_id === owner && r.id === body.id)) {
+          if (inventory.some((r) => r.user_id === owner && r.id === body.id)) {
             status = 409;
             data = { code: "23505", message: "Duplicate" };
           } else {
@@ -291,7 +323,7 @@ export async function cloudMock(
               created_at: timestamp,
               updated_at: timestamp,
             };
-            tobaccos.push(entry);
+            inventory.push(entry);
             status = 201;
             data = entry;
           }
@@ -303,9 +335,9 @@ export async function cloudMock(
         } else if (method === "DELETE") {
           data = selected.map(({ id }) => ({ id }));
           for (const entry of selected) {
-            tobaccos.splice(tobaccos.indexOf(entry), 1);
+            inventory.splice(inventory.indexOf(entry), 1);
             for (const item of media.filter(
-              (m) => m.user_id === owner && m.tobacco_id === entry.id,
+              (m) => m.user_id === owner && m[link] === entry.id,
             ))
               media.splice(media.indexOf(item), 1);
           }
@@ -432,6 +464,7 @@ export async function cloudMock(
   return {
     rows,
     tobaccos,
+    cigars,
     requests,
     objects,
     media,

@@ -5,6 +5,11 @@ import { LANGUAGE_KEY } from "./i18n";
 import { useAuthContext } from "./auth/AuthContext";
 import { TobaccoCatalogue } from "./components/TobaccoCatalogue";
 import { CloudCatalogue } from "./components/CloudCatalogue";
+const CigarCatalogue = lazy(() =>
+  import("./components/CigarCatalogue").then((m) => ({
+    default: m.CigarCatalogue,
+  })),
+);
 const Account = lazy(() =>
   import("./components/Account").then((m) => ({ default: m.Account })),
 );
@@ -75,7 +80,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        {module !== "pipes" && module !== "tobaccos" ? (
+        {module !== "pipes" && module !== "tobaccos" && module !== "cigars" ? (
           <section className="placeholder">
             <div className="eyebrow">{APP_NAME}</div>
             <h1>{t("soonTitle", { module: t(`nav.${module}`) })}</h1>
@@ -89,7 +94,16 @@ export default function App() {
           !auth.sessionError &&
           !auth.recovery ? (
           auth.profileReady ? (
-            module === "tobaccos" ? (
+            module === "cigars" ? (
+              <Suspense fallback={<p role="status">{t("cigars.working")}</p>}>
+                <CigarCatalogue
+                  key={auth.session.user.id}
+                  userId={auth.session.user.id}
+                  email={auth.session.user.email || ""}
+                  onSessionLost={auth.invalidateSession}
+                />
+              </Suspense>
+            ) : module === "tobaccos" ? (
               <TobaccoCatalogue
                 key={auth.session.user.id}
                 userId={auth.session.user.id}
@@ -113,7 +127,7 @@ export default function App() {
           )
         ) : (
           <section className="placeholder">
-            <h1>{t(module === "tobaccos" ? "tobaccos.title" : "title")}</h1>
+            <h1>{t(module === "pipes" ? "title" : `${module}.title`)}</h1>
             <p>{t(auth.loading ? "auth.loading" : "cloud.signInRequired")}</p>
           </section>
         )}

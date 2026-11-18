@@ -266,5 +266,63 @@
       "recent": "Ultima modifica",
       "remaining": "Grammi residui esatti"
     }
+  },
+  "cigars": {
+    "title": "Sigari",
+    "intro": "Il tuo catalogo personale di sigari.",
+    "add": "Aggiungi sigaro",
+    "edit": "Modifica sigaro",
+    "save": "Salva sigaro",
+    "search": "Cerca sigari",
+    "working": "Operazione in corso…",
+    "empty": "Il catalogo sigari è vuoto.",
+    "advanced": "Dettagli avanzati",
+    "humidityHint": "Promemoria personale facoltativo. Inserisci un valore tra 0 e 100.",
+    "humidityReminder": "Umidità target personale",
+    "rhUnit": "% UR",
+    "sort": "Ordina per",
+    "invalid": "Controlla marca, nome e valori della scheda.",
+    "saved": "Sigaro salvato.",
+    "deleted": "Sigaro eliminato.",
+    "confirmDelete": "Eliminare {{name}} dal catalogo sigari?",
+    "partial": "La scheda è stata creata. La fotografia è ancora da salvare.",
+    "pendingPhoto": "Foto del backup in attesa di caricamento. Ripeti l’importazione per completarla.",
+    "invalidBackup": "Scegli un backup JSON del catalogo sigari in formato versione 1.",
+    "duplicate": "ID duplicato. La scheda esistente è stata conservata.",
+    "importTitle": "Importa catalogo sigari",
+    "importPlan": "Schede da controllare: {{valid}}. Escluse dal file: {{rejected}}.",
+    "transfer": "Conferma importazione sigari",
+    "confirmImport": "Importare i sigari nell’account {{email}}? Le schede esistenti saranno conservate.",
+    "importResult": "Importate: {{imported}}. Errori o duplicati: {{failed}}. Non tentate: {{unattempted}}.",
+    "all": {
+      "vitola": "Tutti i formati",
+      "country": "Tutti i paesi"
+    },
+    "order": {
+      "name": "Nome",
+      "recent": "Ultima modifica",
+      "rating": "Valutazione",
+      "remaining": "Quantità residua"
+    },
+    "fields": {
+      "brand": "Marca",
+      "name": "Nome",
+      "series": "Linea o serie",
+      "vitola": "Vitola o formato",
+      "country": "Paese d’origine",
+      "length": "Lunghezza (mm)",
+      "ringGauge": "Cepo / ring gauge",
+      "wrapper": "Fascia",
+      "binder": "Sottofascia",
+      "filler": "Ripieno",
+      "strength": "Intensità",
+      "initial": "Quantità iniziale (pezzi)",
+      "remaining": "Quantità residua (pezzi)",
+      "price": "Prezzo d’acquisto (€)",
+      "date": "Data d’acquisto",
+      "rating": "Valutazione personale",
+      "notes": "Note personali",
+      "humidity": "Umidità target (% UR)"
+    }
   }
 }
