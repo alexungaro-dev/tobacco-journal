@@ -56,6 +56,7 @@ test("quick cigar logging defaults to a single atomic charge and retries a lost 
   await save(page).click();
   const existing = card(page, "Example Reserva");
   await expect(existing).toBeVisible();
+  await expect(page.getByText("Scorta aggiornata.", { exact: true })).toBeVisible();
   expect(api.cigars[0].extra.remaining).toBe(11);
   expect(api.sessions).toHaveLength(1);
   expect(api.sessions[0].rating).toBeNull();

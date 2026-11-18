@@ -798,3 +798,53 @@ button:disabled {
   overflow-wrap: anywhere;
   margin: 8px 0;
 }
+
+.stock-alert-settings {
+  margin-block: 0 18px;
+  padding: 10px 12px;
+  border: 1px solid #48463a;
+  border-radius: 6px;
+}
+
+.stock-alert-settings summary {
+  cursor: pointer;
+  color: #ccbb9d;
+}
+
+.stock-alert-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.stock-alert-controls select {
+  display: block;
+  width: auto;
+}
+
+.stock-alert {
+  display: inline-block;
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid #947140;
+  border-radius: 5px;
+  background: #352a1b;
+  color: #f0c685;
+  font-size: 0.8rem;
+}
+
+.stock-alert-empty {
+  border-color: #9b655a;
+  background: #3c2825;
+  color: #f4b5a7;
+}
+
+.stock-confirmation .stock-alert {
+  margin-inline-start: 8px;
+}
+
+.journal-stock-alert:empty {
+  display: none;
+}

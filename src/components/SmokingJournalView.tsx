@@ -18,6 +18,8 @@ import {
 import { cloudErrorKey } from "../data/pipeMapping";
 import type { PhotoRef } from "../data/pipePhotos";
 import { downloadJson, MAX_BACKUP_BYTES } from "../data/storage";
+import { confirmedStock, type StockOutcome } from "../data/stockAlerts";
+import { StockAlertBadge } from "./StockAlerts";
 import { JournalForm } from "./JournalForm";
 import { PipePhoto } from "./PipePhoto";
 
@@ -54,6 +56,10 @@ export function SmokingJournalView({
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [stockFeedback, setStockFeedback] = useState<{
+    requested: boolean;
+    outcome?: StockOutcome;
+  }>();
   const [editing, setEditing] = useState<SessionRow | null>();
   const [created, setCreated] = useState<SessionRow>();
   const [search, setSearch] = useState("");
@@ -157,6 +163,7 @@ export function SmokingJournalView({
   }
 
   function open(row: SessionRow | null | undefined) {
+    setStockFeedback(undefined);
     setEditing(row);
     setCreated(undefined);
     setError("");
@@ -346,6 +353,20 @@ export function SmokingJournalView({
       )}
       {notice && <p role="status">{t(notice)}</p>}
       {created && <p role="status">{t("diary.partial")}</p>}
+      {stockFeedback && (
+        <p role="status" className="stock-confirmation">
+          {t(
+            stockFeedback.outcome
+              ? "diary.stockUpdated"
+              : stockFeedback.requested
+                ? "diary.stockUnverified"
+                : "diary.stockUnchanged",
+          )}
+          {stockFeedback.outcome && (
+            <StockAlertBadge {...stockFeedback.outcome} />
+          )}
+        </p>
+      )}
       {editing !== undefined && (
         <JournalForm
           initial={editing ? fromSessionRow(editing) : undefined}
@@ -371,6 +392,10 @@ export function SmokingJournalView({
                   if (scope.current === service) {
                     keep(row);
                     setCreated(row);
+                    setStockFeedback({
+                      requested: !!stock,
+                      outcome: stock ? confirmedStock(row.extra) : undefined,
+                    });
                   }
                 },
               );
@@ -378,6 +403,16 @@ export function SmokingJournalView({
               keep(saved.row);
               open(undefined);
               setNotice(saved.cleanup ? "photos.cleanup" : "diary.saved");
+              if (!editing) {
+                const requested =
+                  !!stock || !!(created && stockFeedback?.requested);
+                setStockFeedback({
+                  requested,
+                  outcome: requested
+                    ? confirmedStock(saved.row.extra)
+                    : undefined,
+                });
+              }
               if (stock || created) {
                 try {
                   const next = await service.catalogue();

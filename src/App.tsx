@@ -4,6 +4,7 @@ import { APP_NAME, APP_MONOGRAM, MODULES, type Module } from "./config";
 import { LANGUAGE_KEY } from "./i18n";
 import { useAuthContext } from "./auth/AuthContext";
 import { TobaccoCatalogue } from "./components/TobaccoCatalogue";
+import { StockAlertPreferences } from "./components/StockAlerts";
 import { CloudCatalogue } from "./components/CloudCatalogue";
 const SmokingJournalView = lazy(() =>
   import("./components/SmokingJournalView").then((m) => ({
@@ -102,38 +103,49 @@ export default function App() {
           !auth.sessionError &&
           !auth.recovery ? (
           auth.profileReady ? (
-            module === "diary" ? (
-              <Suspense fallback={<p role="status">{t("diary.working")}</p>}>
-                <SmokingJournalView
-                  key={auth.session.user.id}
-                  userId={auth.session.user.id}
-                  email={auth.session.user.email || ""}
-                  onSessionLost={auth.invalidateSession}
-                />
-              </Suspense>
-            ) : module === "cigars" ? (
-              <Suspense fallback={<p role="status">{t("cigars.working")}</p>}>
-                <CigarCatalogue
-                  key={auth.session.user.id}
-                  userId={auth.session.user.id}
-                  email={auth.session.user.email || ""}
-                  onSessionLost={auth.invalidateSession}
-                />
-              </Suspense>
-            ) : module === "tobaccos" ? (
-              <TobaccoCatalogue
-                key={auth.session.user.id}
-                userId={auth.session.user.id}
-                email={auth.session.user.email || ""}
-                onSessionLost={auth.invalidateSession}
-              />
-            ) : (
+            module === "pipes" ? (
               <CloudCatalogue
                 key={auth.session.user.id}
                 userId={auth.session.user.id}
                 email={auth.session.user.email || ""}
                 onSessionLost={auth.invalidateSession}
               />
+            ) : (
+              <StockAlertPreferences
+                key={auth.session.user.id}
+                owner={auth.session.user.id}
+              >
+                {module === "diary" ? (
+                  <Suspense
+                    fallback={<p role="status">{t("diary.working")}</p>}
+                  >
+                    <SmokingJournalView
+                      key={auth.session.user.id}
+                      userId={auth.session.user.id}
+                      email={auth.session.user.email || ""}
+                      onSessionLost={auth.invalidateSession}
+                    />
+                  </Suspense>
+                ) : module === "cigars" ? (
+                  <Suspense
+                    fallback={<p role="status">{t("cigars.working")}</p>}
+                  >
+                    <CigarCatalogue
+                      key={auth.session.user.id}
+                      userId={auth.session.user.id}
+                      email={auth.session.user.email || ""}
+                      onSessionLost={auth.invalidateSession}
+                    />
+                  </Suspense>
+                ) : (
+                  <TobaccoCatalogue
+                    key={auth.session.user.id}
+                    userId={auth.session.user.id}
+                    email={auth.session.user.email || ""}
+                    onSessionLost={auth.invalidateSession}
+                  />
+                )}
+              </StockAlertPreferences>
             )
           ) : (
             <p role="status">

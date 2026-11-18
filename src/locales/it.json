@@ -440,6 +440,22 @@
       "gurgle": "Condensa o gorgoglio",
       "irritation": "Irritazione",
       "cut": "Taglio"
-    }
+    },
+    "stockUnavailable": "Scarico non riuscito: la scorta non è sufficiente o non è specificata. La fumata non è stata registrata. Riprova senza scarico o ricarica il diario.",
+    "stockUpdated": "Scorta aggiornata.",
+    "stockUnverified": "Aggiornamento della scorta non confermato.",
+    "stockUnchanged": "Scorte invariate."
+  },
+  "stockAlerts": {
+    "settings": "Avvisi di scorta",
+    "enable": "Mostra gli avvisi di scorta",
+    "threshold": "Soglia sigari (pezzi)",
+    "save": "Salva preferenze scorte",
+    "saved": "Preferenze salvate.",
+    "loading": "Caricamento preferenze…",
+    "loadError": "Impossibile caricare le preferenze di scorta.",
+    "saveError": "Impossibile salvare le preferenze di scorta.",
+    "low": "Scorta bassa",
+    "empty": "Esaurito"
   }
 }

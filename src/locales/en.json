@@ -440,6 +440,22 @@
       "gurgle": "Condensation or gurgling",
       "irritation": "Irritation",
       "cut": "Cut"
-    }
+    },
+    "stockUnavailable": "Stock could not be deducted: the quantity is insufficient or unspecified. The session was not recorded. Retry without deducting stock or reload the journal.",
+    "stockUpdated": "Stock updated.",
+    "stockUnverified": "Stock update could not be confirmed.",
+    "stockUnchanged": "Stock unchanged."
+  },
+  "stockAlerts": {
+    "settings": "Stock alerts",
+    "enable": "Show stock alerts",
+    "threshold": "Cigar threshold (pieces)",
+    "save": "Save stock preferences",
+    "saved": "Preferences saved.",
+    "loading": "Loading preferences…",
+    "loadError": "Stock preferences could not be loaded.",
+    "saveError": "Stock preferences could not be saved.",
+    "low": "Low stock",
+    "empty": "Out of stock"
   }
 }

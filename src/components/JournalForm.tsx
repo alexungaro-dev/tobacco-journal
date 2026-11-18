@@ -17,6 +17,8 @@ import { remainingLevels, type RemainingLevel } from "../data/tobaccos";
 import { cloudErrorKey } from "../data/pipeMapping";
 import { PHOTO_TYPES, validatePhoto, type PhotoEdit } from "../data/pipePhotos";
 import { PipePhoto, usePhotoPreview, type PrivatePhoto } from "./PipePhoto";
+import { canDebitCigar } from "../data/stockAlerts";
+import { StockAlertBadge } from "./StockAlerts";
 import { StarRating } from "./StarRating";
 
 type Choice = { source: Source; id: string };
@@ -119,12 +121,12 @@ function StockFields({
 }) {
   const { t, i18n } = useTranslation();
   const [enabled, setEnabled] = useState(
-    kind === "cigar" && (item.remaining ?? 0) > 0,
+    kind === "cigar" && canDebitCigar(item.remaining),
   );
   const [changeLevel, setChangeLevel] = useState(false);
   const [changeGrams, setChangeGrams] = useState(false);
   const number = new Intl.NumberFormat(i18n.language);
-  const available = kind === "pipe" || (item.remaining ?? 0) > 0;
+  const available = kind === "pipe" || canDebitCigar(item.remaining);
   return (
     <fieldset className="field full journal-product">
       <legend>{t("diary.stock")}</legend>
@@ -342,7 +344,7 @@ export function JournalForm({
           });
           let stock: StockChange | null = null;
           if (stockAllowed && selected && data.has("stock")) {
-            if (kind === "cigar" && (selected.remaining ?? 0) > 0)
+            if (kind === "cigar" && canDebitCigar(selected.remaining))
               stock = { kind: "cigar", revision: selected.updatedAt };
             if (kind === "pipe") {
               const patch: Extract<StockChange, { kind: "tobacco" }>["patch"] =
@@ -421,6 +423,18 @@ export function JournalForm({
             value={rating}
             onChange={setRating}
           />
+          {selected && (
+            <div className="field full journal-stock-alert">
+              {kind === "cigar" ? (
+                <StockAlertBadge kind="cigar" remaining={selected.remaining} />
+              ) : (
+                <StockAlertBadge
+                  kind="tobacco"
+                  remainingLevel={selected.remainingLevel}
+                />
+              )}
+            </div>
+          )}
           {stockAllowed && selected && (
             <StockFields
               key={kind + selected.id + selected.updatedAt}

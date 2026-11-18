@@ -123,6 +123,10 @@ export async function cloudMock(
   const cigars = structuredClone(initialCigars);
   const sessions = structuredClone(initialSessions);
   const receipts = new Map<string, string>();
+  const stockPreferences = new Map<
+    string,
+    { stock_alerts_enabled: boolean; cigar_low_stock_threshold: number }
+  >();
   let loseSession = false;
   const objects = new Map<string, { bytes: Buffer; type: string }>();
   const media: Record<string, any>[] = [];
@@ -188,8 +192,20 @@ export async function cloudMock(
     else if (url.pathname === "/auth/v1/user")
       data = authSession(owner || OWNER_A).user;
     else if (url.pathname === "/rest/v1/profiles") {
-      status = 201;
-      data = null;
+      if (method === "POST") {
+        status = 201;
+        data = null;
+      } else if (!owner || url.searchParams.get("id") !== `eq.${owner}`) {
+        status = 403;
+        data = { code: "42501" };
+      } else {
+        const current = stockPreferences.get(owner) ?? {
+          stock_alerts_enabled: true,
+          cigar_low_stock_threshold: 3,
+        };
+        data = method === "PATCH" ? { ...current, ...body } : current;
+        if (method === "PATCH") stockPreferences.set(owner, data);
+      }
     } else if (storage) {
       const root = "/storage/v1/object/journal-photos";
       const path = decodeURIComponent(url.pathname.slice(root.length + 1));
@@ -273,6 +289,13 @@ export async function cloudMock(
       } else if (stock && (!product || stock.revision !== product.updated_at)) {
         status = 409;
         data = { code: "40001" };
+      } else if (
+        stock?.kind === "cigar" &&
+        (!Number.isSafeInteger(product?.extra.remaining) ||
+          (product?.extra.remaining as number) < 1)
+      ) {
+        status = 422;
+        data = { code: "PT422" };
       } else {
         const timestamp = new Date(
           Date.UTC(2026, 10, 16, 17, 0, ++version),
@@ -293,9 +316,17 @@ export async function cloudMock(
         ) {
           product.extra.remaining--;
           product.updated_at = timestamp;
+          session.extra.stockOutcome = {
+            kind: "cigar",
+            remaining: product.extra.remaining,
+          };
         } else if (stock?.kind === "tobacco" && product) {
           Object.assign(product.extra, stock.patch);
           product.updated_at = timestamp;
+          session.extra.stockOutcome = {
+            kind: "tobacco",
+            remainingLevel: product.extra.remainingLevel ?? null,
+          };
         }
         if (loseSession) {
           loseSession = false;
@@ -610,6 +641,7 @@ export async function cloudMock(
     tobaccos,
     cigars,
     sessions,
+    stockPreferences,
     loseSessionWrite: () => {
       loseSession = true;
     },

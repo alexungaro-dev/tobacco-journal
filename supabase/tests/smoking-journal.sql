@@ -11,7 +11,7 @@ select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111'
 insert into public.profiles(id) values(auth.uid());
 insert into public.pipes(id,brand,model) values ('p','Maker','Pipe');
 insert into public.tobaccos(id,brand,name,extra) values ('t','Maker','Blend','{"remaining":27.5,"remainingLevel":"half","status":"opened"}');
-insert into public.cigars(id,brand,name,extra) values ('c','Maker','Cigar','{"remaining":3}'), ('zero','Maker','Zero','{"remaining":0}'), ('unknown','Maker','Unknown','{}');
+insert into public.cigars(id,brand,name,extra) values ('c','Maker','Cigar','{"remaining":3}'), ('zero','Maker','Zero','{"remaining":0}'), ('unknown','Maker','Unknown','{}'), ('invalid','Maker','Invalid','{"remaining":-1}');
 
 do $$
 declare
@@ -20,8 +20,9 @@ declare
   gift jsonb := '{"id":"gift","kind":"pipe","pipe_id":"p","started_at":"2026-11-18T21:12:00Z","extra":{"pipe":{"source":"owned","catalogueId":"p","name":"Pipe"},"product":{"source":"gift","name":"Birthday blend","offeredBy":"Friend"}}}';
   stock jsonb;
   tobacco jsonb;
-  zero_stock jsonb;
-  unknown_stock jsonb;
+  unavailable text;
+  debit jsonb;
+  unavailable_entry jsonb;
 begin
   stock := jsonb_build_object('kind','cigar','revision',(select updated_at from public.cigars where id='c'));
   -- now() is transaction-stable in this suite. Seed a distinct revision to
@@ -44,8 +45,12 @@ begin
   perform pg_temp.check_journal((select extra @> '{"remainingLevel":"empty","remaining":18.5,"status":"opened"}'
     from public.tobaccos where id='t'),'exact grams can be changed without changing level or status');
 
-  perform public.record_smoking_session(cigar,stock);
-  perform public.record_smoking_session(cigar,stock);
+  perform pg_temp.check_journal((public.record_smoking_session(cigar,stock)).extra->'stockOutcome' =
+    '{"kind":"cigar","remaining":2}'::jsonb, 'cigar debit returns confirmed quantity');
+  perform pg_temp.check_journal((public.record_smoking_session(cigar,stock)).extra->'stockOutcome' =
+    '{"kind":"cigar","remaining":2}'::jsonb, 'retry preserves confirmed outcome');
+  perform pg_temp.check_journal((select extra->'stockOutcome'='{"kind":"tobacco","remainingLevel":"empty"}'::jsonb
+    from public.smoking_sessions where id='smoke-p'),'tobacco debit returns confirmed level');
   perform pg_temp.check_journal((select extra->>'remaining'='2' from public.cigars where id='c'),'identical request charges once');
   begin
     perform public.record_smoking_session(jsonb_set(cigar,'{rating}','2'),stock);
@@ -63,12 +68,24 @@ begin
   end;
   perform public.record_smoking_session(jsonb_set(cigar,'{id}','"import"'),null);
   perform pg_temp.check_journal((select extra->>'remaining'='2' from public.cigars where id='c'),'import with no stock preserves stock');
-  zero_stock := jsonb_build_object('kind','cigar','revision',(select updated_at from public.cigars where id='zero'));
-  unknown_stock := jsonb_build_object('kind','cigar','revision',(select updated_at from public.cigars where id='unknown'));
-  perform public.record_smoking_session(jsonb_set(jsonb_set(cigar,'{id}','"zero-session"'),'{cigar_id}','"zero"'),zero_stock);
-  perform public.record_smoking_session(jsonb_set(jsonb_set(cigar,'{id}','"unknown-session"'),'{cigar_id}','"unknown"'),unknown_stock);
+  foreach unavailable in array array['zero','unknown','invalid'] loop
+    debit := jsonb_build_object('kind','cigar','revision',(select updated_at from public.cigars where id=unavailable));
+    unavailable_entry := cigar || jsonb_build_object('id',unavailable || '-session','cigar_id',unavailable);
+    begin
+      perform public.record_smoking_session(unavailable_entry,debit);
+      raise exception 'Unavailable stock accepted';
+    exception when sqlstate 'PT422' then
+      perform pg_temp.check_journal(not exists(select 1 from public.smoking_sessions where id=unavailable || '-session')
+        and not exists(select 1 from public.smoking_session_receipts where id=unavailable || '-session'),
+        unavailable || ' debit rolls back both session and receipt');
+    end;
+    perform public.record_smoking_session(unavailable_entry,null);
+    perform pg_temp.check_journal((select not extra ? 'stockOutcome' from public.smoking_sessions where id=unavailable || '-session'),
+      unavailable || ' can be logged without a debit');
+  end loop;
   perform pg_temp.check_journal((select extra->>'remaining'='0' from public.cigars where id='zero'),'zero remains zero');
   perform pg_temp.check_journal((select not extra ? 'remaining' from public.cigars where id='unknown'),'unknown remains unspecified');
+  perform pg_temp.check_journal((select extra->>'remaining'='-1' from public.cigars where id='invalid'),'invalid legacy quantity is not decreased');
 
   perform public.record_smoking_session(gift,null);
   begin
@@ -87,8 +104,27 @@ delete from public.cigars where id='c';
 select pg_temp.check_journal((select pipe_id is null and extra->'pipe'->>'name'='Pipe' from public.smoking_sessions where id='gift'),'deleted pipe leaves historic label');
 select pg_temp.check_journal((select cigar_id is null and extra->'product'->>'name'='Cigar' from public.smoking_sessions where id='import'),'deleted cigar leaves historic label');
 
+select pg_temp.check_journal((select stock_alerts_enabled and cigar_low_stock_threshold=3
+  from public.profiles where id=auth.uid()),'default stock alert preferences');
+update public.profiles set stock_alerts_enabled=false, cigar_low_stock_threshold=10 where id=auth.uid();
+do $$
+begin
+  begin
+    update public.profiles set cigar_low_stock_threshold=11 where id=auth.uid();
+    raise exception 'Invalid threshold accepted';
+  exception when check_violation then
+    perform pg_temp.check_journal(true, 'threshold outside supported range rejected');
+  end;
+end $$;
+
 select set_config('request.jwt.claim.sub','22222222-2222-2222-2222-222222222222',true);
 insert into public.profiles(id) values(auth.uid());
+with attempted as (
+  update public.profiles set cigar_low_stock_threshold=1 where id='11111111-1111-1111-1111-111111111111' returning id
+)
+select pg_temp.check_journal(not exists(select 1 from attempted)
+  and not exists(select 1 from public.profiles where id='11111111-1111-1111-1111-111111111111'),
+  'other account cannot read or write stock preferences');
 select pg_temp.check_journal((select count(*)=0 from public.smoking_sessions),'foreign sessions hidden');
 select pg_temp.check_journal((select count(*)=0 from public.smoking_session_receipts),'foreign receipts hidden');
 select pg_temp.check_journal((select count(*)=0 from public.media),'foreign diary photo metadata hidden');
@@ -104,6 +140,8 @@ begin
 end $$;
 
 select set_config('request.jwt.claim.sub','11111111-1111-1111-1111-111111111111',true);
+select pg_temp.check_journal((select not stock_alerts_enabled and cigar_low_stock_threshold=10
+  from public.profiles where id=auth.uid()), 'own preferences persist across accounts');
 delete from public.smoking_sessions where id='gift';
 select pg_temp.check_journal((select count(*)=0 from public.media),'session deletion cascades photo metadata');
 set local role anon;

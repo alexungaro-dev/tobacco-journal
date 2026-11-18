@@ -42,6 +42,7 @@ begin
 end $$;
 delete from auth.users where id='44444444-4444-4444-4444-444444444444';
 SQL
+docker exec -i "$container" psql -X -U postgres -v ON_ERROR_STOP=1 < supabase/migrations/20261118180000_stock_alerts.sql
 docker exec -i "$container" psql -X -U postgres -v ON_ERROR_STOP=1 < supabase/tests/smoking-journal.sql
 
 # Start two distinct registrations against the same observed inventory revision.
@@ -50,7 +51,7 @@ docker exec -i "$container" psql -X -U postgres -v ON_ERROR_STOP=1 <<'SQL'
 insert into auth.users values ('33333333-3333-3333-3333-333333333333');
 insert into public.profiles(id) values ('33333333-3333-3333-3333-333333333333');
 insert into public.cigars(user_id,id,brand,name,extra,updated_at)
-values ('33333333-3333-3333-3333-333333333333','race','Maker','Race','{"remaining":2}','2000-01-01T00:00:00Z');
+values ('33333333-3333-3333-3333-333333333333','race','Maker','Race','{"remaining":1}','2000-01-01T00:00:00Z');
 SQL
 journal_request() {
   docker exec -i "$container" psql -X -U postgres -v ON_ERROR_STOP=1 -v "entry_id=$1" <<SQL
@@ -71,5 +72,5 @@ if wait "$journal_a"; then journal_wins=$((journal_wins+1)); fi
 if wait "$journal_b"; then journal_wins=$((journal_wins+1)); fi
 test "$journal_wins" -eq 1
 journal_result=$(docker exec "$container" psql -X -U postgres -At -v ON_ERROR_STOP=1   -c "select (select count(*) from public.smoking_sessions where cigar_id='race'), (select extra->>'remaining' from public.cigars where id='race'), (select count(*) from public.smoking_session_receipts where id like 'concurrent-%')")
-test "$journal_result" = '1|1|1'
+test "$journal_result" = '1|0|1'
 echo 'PASS: concurrent registrations with the same revision charge once'

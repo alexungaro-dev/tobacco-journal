@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { stockFailureKey } from "./stockAlerts";
 import { CloudPipes } from "./cloudPipes";
 import { CloudError, cloudErrorKey, stableJson } from "./pipeMapping";
 import {
@@ -519,7 +520,8 @@ export class SmokingJournal {
       .rpc("record_smoking_session", { entry: payload, stock })
       .retry(false)
       .abortSignal(this.signal);
-    if (error?.code === "40001") throw new CloudError("diary.stockConflict");
+    const stockFailure = stockFailureKey(error?.code);
+    if (stockFailure) throw new CloudError(stockFailure);
     if (error?.code === "PGRST202") throw new CloudError("diary.migration");
     if (error) throw error;
     return this.verify(
