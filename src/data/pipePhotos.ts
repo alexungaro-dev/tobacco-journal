@@ -26,7 +26,7 @@ export function photoState(row: PipeRow): PhotoRef | null | undefined {
 export function privatePhotoRef(
   value: unknown,
   owner: string,
-  kind: "pipe" | "tobacco" | "cigar",
+  kind: "pipe" | "tobacco" | "cigar" | "session",
 ) {
   if (value === undefined) return undefined;
   const ref = value as PhotoRef | null;
@@ -120,7 +120,7 @@ export class PipePhotos {
     private userId: string,
     private signal: AbortSignal,
     private guard: () => Promise<void>,
-    private kind: "pipe" | "tobacco" | "cigar" = "pipe",
+    private kind: "pipe" | "tobacco" | "cigar" | "session" = "pipe",
   ) {}
 
   private get bucket() {
@@ -128,7 +128,9 @@ export class PipePhotos {
   }
 
   private get link() {
-    return `${this.kind}_id` as const;
+    return this.kind === "session"
+      ? "smoking_session_id"
+      : (`${this.kind}_id` as const);
   }
 
   private metadata(pipeId: string, ref: PhotoRef) {
@@ -171,7 +173,7 @@ export class PipePhotos {
     const { data, error } = await this.client
       .from("media")
       .select(
-        "user_id,pipe_id,tobacco_id,cigar_id,bucket_id,object_path,mime_type,size_bytes",
+        "user_id,pipe_id,tobacco_id,cigar_id,smoking_session_id,bucket_id,object_path,mime_type,size_bytes",
       )
       .match({
         user_id: this.userId,

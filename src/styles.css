@@ -765,3 +765,36 @@ button:disabled {
   margin-top: 6px;
   color: #ccbb9d;
 }
+
+.journal-product {
+  border: 1px solid #555549;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.journal-product legend {
+  color: #ccbb9d;
+}
+
+.journal-check {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  gap: 8px;
+}
+
+.journal-check input {
+  width: auto;
+  accent-color: #c2a473;
+}
+
+.journal-controls {
+  align-items: end;
+}
+
+.journal-snapshot {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+  margin: 8px 0;
+}

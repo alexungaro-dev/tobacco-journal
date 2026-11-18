@@ -5,6 +5,11 @@ import { LANGUAGE_KEY } from "./i18n";
 import { useAuthContext } from "./auth/AuthContext";
 import { TobaccoCatalogue } from "./components/TobaccoCatalogue";
 import { CloudCatalogue } from "./components/CloudCatalogue";
+const SmokingJournalView = lazy(() =>
+  import("./components/SmokingJournalView").then((m) => ({
+    default: m.SmokingJournalView,
+  })),
+);
 const CigarCatalogue = lazy(() =>
   import("./components/CigarCatalogue").then((m) => ({
     default: m.CigarCatalogue,
@@ -80,7 +85,10 @@ export default function App() {
             </button>
           ))}
         </nav>
-        {module !== "pipes" && module !== "tobaccos" && module !== "cigars" ? (
+        {module !== "pipes" &&
+        module !== "tobaccos" &&
+        module !== "cigars" &&
+        module !== "diary" ? (
           <section className="placeholder">
             <div className="eyebrow">{APP_NAME}</div>
             <h1>{t("soonTitle", { module: t(`nav.${module}`) })}</h1>
@@ -94,7 +102,16 @@ export default function App() {
           !auth.sessionError &&
           !auth.recovery ? (
           auth.profileReady ? (
-            module === "cigars" ? (
+            module === "diary" ? (
+              <Suspense fallback={<p role="status">{t("diary.working")}</p>}>
+                <SmokingJournalView
+                  key={auth.session.user.id}
+                  userId={auth.session.user.id}
+                  email={auth.session.user.email || ""}
+                  onSessionLost={auth.invalidateSession}
+                />
+              </Suspense>
+            ) : module === "cigars" ? (
               <Suspense fallback={<p role="status">{t("cigars.working")}</p>}>
                 <CigarCatalogue
                   key={auth.session.user.id}
@@ -128,7 +145,15 @@ export default function App() {
         ) : (
           <section className="placeholder">
             <h1>{t(module === "pipes" ? "title" : `${module}.title`)}</h1>
-            <p>{t(auth.loading ? "auth.loading" : "cloud.signInRequired")}</p>
+            <p>
+              {t(
+                auth.loading
+                  ? "auth.loading"
+                  : module === "diary"
+                    ? "diary.signInRequired"
+                    : "cloud.signInRequired",
+              )}
+            </p>
           </section>
         )}
       </main>
