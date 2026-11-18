@@ -65,11 +65,26 @@ export function row(owner = OWNER_A, pipe: Record<string, unknown> = LEGACY) {
     updated_at: "2026-11-16T16:00:00.000Z",
   };
 }
+export function tobaccoRow(owner = OWNER_A, id = "t1", name = "Mixture") {
+  return {
+    id,
+    user_id: owner,
+    brand: "Example",
+    name,
+    blend_type: "English",
+    notes: null,
+    extra: { status: "sealed", remaining: 40 } as Record<string, unknown>,
+    created_at: "2026-11-16T16:00:00.000Z",
+    updated_at: "2026-11-16T16:00:00.000Z",
+  };
+}
 export async function cloudMock(
   page: Page,
   initial: ReturnType<typeof row>[] = [],
+  initialTobaccos: ReturnType<typeof tobaccoRow>[] = [],
 ) {
   const rows = structuredClone(initial);
+  const tobaccos = structuredClone(initialTobaccos);
   const objects = new Map<string, { bytes: Buffer; type: string }>();
   const media: Record<string, any>[] = [];
   let photoFault = "";
@@ -202,7 +217,11 @@ export async function cloudMock(
         (method === "POST"
           ? body.user_id !== owner ||
             !body.object_path.startsWith(owner + "/") ||
-            !rows.some((r) => r.user_id === owner && r.id === body.pipe_id)
+            !(body.tobacco_id
+              ? tobaccos.some(
+                  (r) => r.user_id === owner && r.id === body.tobacco_id,
+                )
+              : rows.some((r) => r.user_id === owner && r.id === body.pipe_id))
           : url.searchParams.get("user_id") !== `eq.${owner}`)
       ) {
         status = 403;
@@ -231,6 +250,66 @@ export async function cloudMock(
         if (method === "DELETE")
           selected.forEach((m) => media.splice(media.indexOf(m), 1));
         data = selected;
+      }
+    } else if (url.pathname === "/rest/v1/tobaccos") {
+      if (
+        !owner ||
+        (method !== "POST" &&
+          url.searchParams.get("user_id") !== `eq.${owner}`) ||
+        (body?.user_id && body.user_id !== owner)
+      ) {
+        status = 403;
+        data = { code: "42501", message: "RLS" };
+      } else if (fail === method) {
+        fail = "";
+        await route.abort("failed");
+        return;
+      } else {
+        const revision = url.searchParams.get("updated_at");
+        const id = url.searchParams.get("id");
+        const selected = tobaccos.filter(
+          (r) =>
+            r.user_id === owner &&
+            (!id ||
+              (id.startsWith("eq.")
+                ? r.id === id.slice(3)
+                : r.id > id.slice(3))) &&
+            (!revision || revision === `eq.${r.updated_at}`),
+        );
+        const now = () =>
+          new Date(Date.UTC(2026, 10, 16, 17, 0, ++version)).toISOString();
+        if (method === "GET") {
+          data = selected.sort((a, b) => a.id.localeCompare(b.id)).slice(0, 2);
+        } else if (method === "POST") {
+          if (tobaccos.some((r) => r.user_id === owner && r.id === body.id)) {
+            status = 409;
+            data = { code: "23505", message: "Duplicate" };
+          } else {
+            const timestamp = now();
+            const entry = {
+              ...body,
+              created_at: timestamp,
+              updated_at: timestamp,
+            };
+            tobaccos.push(entry);
+            status = 201;
+            data = entry;
+          }
+        } else if (method === "PATCH") {
+          selected.forEach((entry) =>
+            Object.assign(entry, body, { updated_at: now() }),
+          );
+          data = selected[0] ?? null;
+        } else if (method === "DELETE") {
+          data = selected.map(({ id }) => ({ id }));
+          for (const entry of selected) {
+            tobaccos.splice(tobaccos.indexOf(entry), 1);
+            for (const item of media.filter(
+              (m) => m.user_id === owner && m.tobacco_id === entry.id,
+            ))
+              media.splice(media.indexOf(item), 1);
+          }
+        }
       }
     } else if (url.pathname === "/rest/v1/pipes") {
       if (unauthorized) {
@@ -352,6 +431,7 @@ export async function cloudMock(
   });
   return {
     rows,
+    tobaccos,
     requests,
     objects,
     media,

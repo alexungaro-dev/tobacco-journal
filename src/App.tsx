@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { APP_NAME, APP_MONOGRAM, MODULES, type Module } from "./config";
 import { LANGUAGE_KEY } from "./i18n";
 import { useAuthContext } from "./auth/AuthContext";
+import { TobaccoCatalogue } from "./components/TobaccoCatalogue";
 import { CloudCatalogue } from "./components/CloudCatalogue";
 const Account = lazy(() =>
   import("./components/Account").then((m) => ({ default: m.Account })),
@@ -74,7 +75,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        {module !== "pipes" ? (
+        {module !== "pipes" && module !== "tobaccos" ? (
           <section className="placeholder">
             <div className="eyebrow">{APP_NAME}</div>
             <h1>{t("soonTitle", { module: t(`nav.${module}`) })}</h1>
@@ -88,12 +89,21 @@ export default function App() {
           !auth.sessionError &&
           !auth.recovery ? (
           auth.profileReady ? (
-            <CloudCatalogue
-              key={auth.session.user.id}
-              userId={auth.session.user.id}
-              email={auth.session.user.email || ""}
-              onSessionLost={auth.invalidateSession}
-            />
+            module === "tobaccos" ? (
+              <TobaccoCatalogue
+                key={auth.session.user.id}
+                userId={auth.session.user.id}
+                email={auth.session.user.email || ""}
+                onSessionLost={auth.invalidateSession}
+              />
+            ) : (
+              <CloudCatalogue
+                key={auth.session.user.id}
+                userId={auth.session.user.id}
+                email={auth.session.user.email || ""}
+                onSessionLost={auth.invalidateSession}
+              />
+            )
           ) : (
             <p role="status">
               {t(
@@ -103,7 +113,7 @@ export default function App() {
           )
         ) : (
           <section className="placeholder">
-            <h1>{t("title")}</h1>
+            <h1>{t(module === "tobaccos" ? "tobaccos.title" : "title")}</h1>
             <p>{t(auth.loading ? "auth.loading" : "cloud.signInRequired")}</p>
           </section>
         )}

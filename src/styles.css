@@ -573,3 +573,40 @@ button:disabled {
 .field .photostatus {
   position: static;
 }
+
+.tobacco-editor {
+  margin: 0 auto 1rem;
+  max-height: none;
+}
+
+.tobacco-components {
+  border: 0;
+  padding: 0;
+}
+
+.tobacco-components > label:not(.field) {
+  display: inline-block;
+  margin: .2rem .8rem .4rem 0;
+}
+
+.tobacco-components input[type="checkbox"] {
+  width: auto;
+  accent-color: #c2a473;
+}
+
+.tobacco-details {
+  overflow-wrap: anywhere;
+}
+
+.tobacco-details div {
+  margin-block: .4rem;
+}
+
+.tobacco-details dt {
+  font-weight: 600;
+}
+
+.tobacco-details dd {
+  margin-inline-start: 0;
+  white-space: pre-wrap;
+}

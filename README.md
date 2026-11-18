@@ -1,10 +1,10 @@
 # Tobacco Journal
 
-Stato attuale — **Milestone 02, Fase B**. Il catalogo pipe richiede
-l'accesso a Supabase e supporta fotografie private, migrazione esplicita e
-backup JSON. Vedere [Fotografie delle pipe](docs/cloud-pipe-photos.md) e
-[Catalogo cloud](docs/cloud-pipes.md). Le sezioni della Milestone 01 qui
-sotto descrivono il precedente flusso locale.
+Stato attuale — **Milestone 03**. Il catalogo richiede l'accesso a
+Supabase e comprende [tabacchi da pipa](docs/cloud-tobaccos.md) e
+[pipe](docs/cloud-pipes.md), con fotografie private e backup JSON separati.
+Vedere anche la [guida alle fotografie delle pipe](docs/cloud-pipe-photos.md).
+Le sezioni della Milestone 01 qui sotto descrivono il precedente flusso locale.
 
 Milestone 01: React + TypeScript + Vite, CSS Dark Heritage e italiano/inglese con react-i18next. Nessun backend o servizio esterno richiesto.
 
