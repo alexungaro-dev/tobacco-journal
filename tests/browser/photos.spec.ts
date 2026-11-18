@@ -56,7 +56,7 @@ test("validated upload for a new pipe, private display after refresh, replacemen
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const api = await cloudMock(page);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await page.getByRole("button", { name: /Aggiungi/ }).click();
   await page.getByLabel("Marca *").fill("Peterson");
@@ -112,7 +112,7 @@ test("legacy migration confirms, retries partial failures, preserves originals a
   page,
 }) => {
   const api = await cloudMock(page, [row()]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await pending(page, 1);
   page.once("dialog", (dialog) => dialog.dismiss());
@@ -205,7 +205,7 @@ test("late uploads cannot attach or disclose photos after logout and owner chang
     row(),
     row(OWNER_B, { id: LEGACY.id, brand: "Other", model: "Private" }),
   ]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await migrate(page);
   await privatePicture(page);
@@ -225,7 +225,7 @@ test("late uploads cannot attach or disclose photos after logout and owner chang
   await upload;
   const other = await page.context().newPage();
   await cloudMock(other);
-  await other.goto("/");
+  await other.goto("/#pipes");
   await other.locator(".account summary").click();
   await other.getByRole("button", { name: "Esci", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -272,7 +272,7 @@ test("invalid and oversized legacy images are reported and retained", async ({
     row(OWNER_A, { ...LEGACY, id: "large", photo: oversized }),
     row(OWNER_A, { ...LEGACY, id: "gif", photo: unsupported }),
   ]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await pending(page, 3);
   await migrate(page);
@@ -298,7 +298,7 @@ test("cleanup failure retains only the new active photo and reports the leftover
   page,
 }) => {
   const api = await cloudMock(page, [row()]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await migrate(page);
   await privatePicture(page);

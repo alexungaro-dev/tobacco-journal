@@ -118,7 +118,7 @@ test("PKCE recovery is recognized from verified exchange, URL is scrubbed and ma
       },
       exchangeCodeForSession: async (code: string) => {
         assert.equal(code, "single-use-code");
-        assert.equal(cleaned(), "/#pipes");
+        assert.equal(cleaned(), "/#dashboard");
         listener("PASSWORD_RECOVERY");
         return { data: { session }, error: null };
       },
@@ -151,7 +151,7 @@ test("invalid, implicit and spoofed recovery URLs never authorize a password res
   ]) {
     const cleaned = browser("https://preview.example" + path);
     await assert.rejects(() => restoreAccess(fake), /invalid_callback/);
-    assert.equal(cleaned(), "/#pipes");
+    assert.equal(cleaned(), "/#dashboard");
     assert.equal(recoveryUser(), null);
   }
 });

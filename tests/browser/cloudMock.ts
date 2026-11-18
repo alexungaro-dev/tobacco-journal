@@ -615,6 +615,21 @@ export async function cloudMock(
         }
       }
     }
+    // PostgREST JSON projections used by the dashboard and journal catalogue.
+    const selectedFields = url.searchParams.get("select") ?? "";
+    if (method === "GET" && Array.isArray(data)) {
+      const projections = [...selectedFields.matchAll(/(\w+):extra->(\w+)/g)];
+      if (projections.length)
+        data = data.map((item) => ({
+          ...item,
+          ...Object.fromEntries(
+            projections.map(([, alias, key]) => [
+              alias,
+              item.extra?.[key] ?? null,
+            ]),
+          ),
+        }));
+    }
     // maybeSingle GET accepts arrays; mutation responses use the object media type.
     if (
       method !== "GET" &&

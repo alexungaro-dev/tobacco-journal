@@ -27,7 +27,7 @@ export async function restoreAccess(client: SupabaseClient) {
     fragment.has("error");
   if (callback || hasAuthParams) {
     // Remove credentials/errors from the address bar before asynchronous work.
-    window.history.replaceState(null, "", "/#pipes");
+    window.history.replaceState(null, "", "/#dashboard");
     const code = url.searchParams.get("code");
     if (
       !callback ||

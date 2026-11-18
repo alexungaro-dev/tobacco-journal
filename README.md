@@ -1,7 +1,7 @@
 # Tobacco Journal
 
-Stato attuale — **Milestone 05**. Il catalogo richiede l'accesso a
-Supabase e comprende [sigari](docs/cloud-cigars.md), [tabacchi da pipa](docs/cloud-tobaccos.md) e
+Stato attuale — **Milestone 06**. La [Dashboard](docs/dashboard.md) è la schermata iniziale
+dopo l’accesso. Il catalogo richiede l'accesso a Supabase e comprende [sigari](docs/cloud-cigars.md), [tabacchi da pipa](docs/cloud-tobaccos.md) e
 [pipe](docs/cloud-pipes.md), con fotografie private e backup JSON separati.
 Vedere anche la [guida alle fotografie delle pipe](docs/cloud-pipe-photos.md).
 Il [diario delle fumate](docs/cloud-smoking-journal.md) richiede la

@@ -19,13 +19,17 @@ import {
 const Preferences = createContext<StockPreferences | undefined>(undefined);
 const fields = "stock_alerts_enabled,cigar_low_stock_threshold";
 
+export function useStockAlertPreferences() {
+  return useContext(Preferences);
+}
+
 export function StockAlertBadge(
   props:
     | { kind: "cigar"; remaining: number | null }
     | { kind: "tobacco"; remainingLevel: string | null },
 ) {
   const { t } = useTranslation();
-  const preferences = useContext(Preferences);
+  const preferences = useStockAlertPreferences();
   if (!preferences?.enabled) return null;
   const alert =
     props.kind === "cigar"
@@ -41,9 +45,11 @@ export function StockAlertBadge(
 export function StockAlertPreferences({
   owner,
   children,
+  showSettings = true,
 }: {
   owner: string;
   children: ReactNode;
+  showSettings?: boolean;
 }) {
   const { t } = useTranslation();
   const [preferences, setPreferences] = useState<StockPreferences>();
@@ -129,62 +135,67 @@ export function StockAlertPreferences({
 
   return (
     <Preferences.Provider value={preferences}>
-      <details className="stock-alert-settings">
-        <summary>{t("stockAlerts.settings")}</summary>
-        {draft && (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void save();
-            }}
-          >
-            <fieldset
-              className="pipefields stock-alert-controls"
-              disabled={saving}
+      {showSettings && (
+        <details className="stock-alert-settings">
+          <summary>{t("stockAlerts.settings")}</summary>
+          {draft && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void save();
+              }}
             >
-              <label className="journal-check">
-                <input
-                  type="checkbox"
-                  checked={draft.enabled}
-                  onChange={(event) =>
-                    change({ ...draft, enabled: event.target.checked })
-                  }
-                />
-                {t("stockAlerts.enable")}
-              </label>
-              <label>
-                {t("stockAlerts.threshold")}
-                <select
-                  aria-label={t("stockAlerts.threshold")}
-                  value={draft.threshold}
-                  onChange={(event) =>
-                    change({ ...draft, threshold: Number(event.target.value) })
-                  }
-                >
-                  {cigarThresholds.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                className="btn secondary"
-                type="submit"
-                disabled={!dirty.current}
+              <fieldset
+                className="pipefields stock-alert-controls"
+                disabled={saving}
               >
-                {t("stockAlerts.save")}
-              </button>
-            </fieldset>
-          </form>
-        )}
-        {status && (
-          <p role={status.endsWith("Error") ? "alert" : "status"}>
-            {t("stockAlerts." + status)}
-          </p>
-        )}
-        {!draft && !status && <p role="status">{t("stockAlerts.loading")}</p>}
-      </details>
+                <label className="journal-check">
+                  <input
+                    type="checkbox"
+                    checked={draft.enabled}
+                    onChange={(event) =>
+                      change({ ...draft, enabled: event.target.checked })
+                    }
+                  />
+                  {t("stockAlerts.enable")}
+                </label>
+                <label>
+                  {t("stockAlerts.threshold")}
+                  <select
+                    aria-label={t("stockAlerts.threshold")}
+                    value={draft.threshold}
+                    onChange={(event) =>
+                      change({
+                        ...draft,
+                        threshold: Number(event.target.value),
+                      })
+                    }
+                  >
+                    {cigarThresholds.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  className="btn secondary"
+                  type="submit"
+                  disabled={!dirty.current}
+                >
+                  {t("stockAlerts.save")}
+                </button>
+              </fieldset>
+            </form>
+          )}
+          {status && (
+            <p role={status.endsWith("Error") ? "alert" : "status"}>
+              {t("stockAlerts." + status)}
+            </p>
+          )}
+          {!draft && !status && <p role="status">{t("stockAlerts.loading")}</p>}
+        </details>
+      )}
       {children}
     </Preferences.Provider>
   );
