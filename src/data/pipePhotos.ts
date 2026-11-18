@@ -26,7 +26,7 @@ export function photoState(row: PipeRow): PhotoRef | null | undefined {
 export function privatePhotoRef(
   value: unknown,
   owner: string,
-  kind: "pipe" | "tobacco",
+  kind: "pipe" | "tobacco" | "cigar",
 ) {
   if (value === undefined) return undefined;
   const ref = value as PhotoRef | null;
@@ -120,7 +120,7 @@ export class PipePhotos {
     private userId: string,
     private signal: AbortSignal,
     private guard: () => Promise<void>,
-    private kind: "pipe" | "tobacco" = "pipe",
+    private kind: "pipe" | "tobacco" | "cigar" = "pipe",
   ) {}
 
   private get bucket() {
@@ -128,7 +128,7 @@ export class PipePhotos {
   }
 
   private get link() {
-    return this.kind === "pipe" ? "pipe_id" : "tobacco_id";
+    return `${this.kind}_id` as const;
   }
 
   private metadata(pipeId: string, ref: PhotoRef) {
@@ -171,7 +171,7 @@ export class PipePhotos {
     const { data, error } = await this.client
       .from("media")
       .select(
-        "user_id,pipe_id,tobacco_id,bucket_id,object_path,mime_type,size_bytes",
+        "user_id,pipe_id,tobacco_id,cigar_id,bucket_id,object_path,mime_type,size_bytes",
       )
       .match({
         user_id: this.userId,
@@ -256,7 +256,41 @@ export class PipePhotos {
     return ref;
   }
 
-  async retire(pipeId: string, ref: PhotoRef, cascaded = false) {
+  async linkedObjects(recordId: string) {
+    const objects: { path: string }[] = [];
+    const prefix = `${this.userId}/${this.kind}-photos/`;
+    let cursor: string | undefined;
+    for (;;) {
+      await this.guard();
+      let query = this.client
+        .from("media")
+        .select("object_path")
+        .match({
+          user_id: this.userId,
+          [this.link]: recordId,
+          bucket_id: PHOTO_BUCKET,
+        })
+        .order("object_path")
+        .limit(100);
+      if (cursor !== undefined) query = query.gt("object_path", cursor);
+      const { data, error } = await query.retry(false).abortSignal(this.signal);
+      if (error) throw error;
+      if (!data?.length) return objects;
+      for (const { object_path: path } of data)
+        if (
+          typeof path === "string" &&
+          path.startsWith(prefix) &&
+          /^[a-f0-9]{64}$/.test(path.slice(prefix.length))
+        )
+          objects.push({ path });
+      const last = data.at(-1)?.object_path;
+      if (typeof last !== "string" || last === cursor)
+        throw new CloudError("photos.metadata");
+      cursor = last;
+    }
+  }
+
+  async retire(pipeId: string, ref: Pick<PhotoRef, "path">, cascaded = false) {
     if (!cascaded) {
       await this.guard();
       const { error } = await this.client

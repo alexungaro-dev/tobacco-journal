@@ -266,5 +266,63 @@
       "recent": "Last updated",
       "remaining": "Exact remaining grams"
     }
+  },
+  "cigars": {
+    "title": "Cigars",
+    "intro": "Your personal cigar catalogue.",
+    "add": "Add cigar",
+    "edit": "Edit cigar",
+    "save": "Save cigar",
+    "search": "Search cigars",
+    "working": "Working…",
+    "empty": "Your cigar catalogue is empty.",
+    "advanced": "Advanced details",
+    "humidityHint": "Optional personal reminder. Enter a value between 0 and 100.",
+    "humidityReminder": "Personal humidity target",
+    "rhUnit": "% RH",
+    "sort": "Sort by",
+    "invalid": "Check the brand, name and values on the record.",
+    "saved": "Cigar saved.",
+    "deleted": "Cigar deleted.",
+    "confirmDelete": "Delete {{name}} from your cigar catalogue?",
+    "partial": "The record was created. The photo still needs to be saved.",
+    "pendingPhoto": "The backup photo is waiting to upload. Repeat the import to finish.",
+    "invalidBackup": "Choose a version 1 JSON backup of the cigar catalogue.",
+    "duplicate": "Duplicate ID. The existing record was kept.",
+    "importTitle": "Import cigar catalogue",
+    "importPlan": "Records to check: {{valid}}. Excluded from file: {{rejected}}.",
+    "transfer": "Confirm cigar import",
+    "confirmImport": "Import the cigars into {{email}}? Existing records will be kept.",
+    "importResult": "Imported: {{imported}}. Errors or duplicates: {{failed}}. Unattempted: {{unattempted}}.",
+    "all": {
+      "vitola": "All formats",
+      "country": "All countries"
+    },
+    "order": {
+      "name": "Name",
+      "recent": "Last updated",
+      "rating": "Rating",
+      "remaining": "Remaining quantity"
+    },
+    "fields": {
+      "brand": "Brand",
+      "name": "Name",
+      "series": "Line or series",
+      "vitola": "Vitola or format",
+      "country": "Country of origin",
+      "length": "Length (mm)",
+      "ringGauge": "Ring gauge",
+      "wrapper": "Wrapper",
+      "binder": "Binder",
+      "filler": "Filler",
+      "strength": "Strength",
+      "initial": "Initial quantity (pieces)",
+      "remaining": "Remaining quantity (pieces)",
+      "price": "Purchase price (€)",
+      "date": "Purchase date",
+      "rating": "Personal rating",
+      "notes": "Personal notes",
+      "humidity": "Humidity target (% RH)"
+    }
   }
 }
