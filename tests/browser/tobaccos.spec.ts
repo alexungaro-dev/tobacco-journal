@@ -45,7 +45,7 @@ test("tobacco CRUD, components, filters, sorting, private photo and English UI",
   await editor(page).getByLabel("Tipo di miscela").fill("Virginia blend");
   await editor(page).getByLabel("Quantità iniziale (g)").fill("50");
   await editor(page).getByLabel("Quantità residua (g)").fill("36.5");
-  await editor(page).getByLabel("Gradimento (1–5)").fill("4");
+  await editor(page).getByRole("button", { name: "4 su 5" }).click();
   await editor(page)
     .getByLabel("Stato", { exact: true })
     .selectOption("opened");

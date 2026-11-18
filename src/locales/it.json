@@ -192,6 +192,17 @@
     "originalBackupHelp": "Il backup completo non è disponibile. Puoi esportare le schede con le copie originali ancora presenti nei dati. Le foto caricate solo nello Storage sono escluse.",
     "reserved": "La scheda contiene un riferimento interno a Storage. Usa un backup JSON esportato dall’app."
   },
+  "starRating": {
+    "option": "{{score}} su 5",
+    "description": {
+      "0": "Nessuna valutazione",
+      "1": "Per niente gradito",
+      "2": "Poco gradito",
+      "3": "Discreto",
+      "4": "Molto gradito",
+      "5": "Eccellente"
+    }
+  },
   "tobaccos": {
     "search": "Cerca tabacchi",
     "title": "Tabacchi da pipa",
@@ -231,7 +242,7 @@
       "price": "Prezzo (€)",
       "status": "Stato",
       "intensity": "Intensità",
-      "rating": "Gradimento (1–5)",
+      "rating": "Gradimento personale",
       "notes": "Note personali"
     },
     "states": {

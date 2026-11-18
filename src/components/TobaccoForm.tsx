@@ -13,6 +13,10 @@ import {
 } from "../data/tobaccos";
 import { PipePhoto, usePhotoPreview, type PrivatePhoto } from "./PipePhoto";
 
+import { StarRating } from "./StarRating";
+
+const quantitiesAndPrice = numberFields.filter((field) => field !== "rating");
+
 export function TobaccoForm({
   initial,
   photo,
@@ -38,6 +42,7 @@ export function TobaccoForm({
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(initial?.components ?? []);
+  const [rating, setRating] = useState(initial?.rating ?? null);
   const [custom, setCustom] = useState("");
   const preview = usePhotoPreview(edit || undefined);
   useEffect(() => {
@@ -57,7 +62,7 @@ export function TobaccoForm({
         if (busy || checking || error.startsWith("photos.")) return;
         const data = new FormData(event.currentTarget);
         const fields = Object.fromEntries(data);
-        for (const key of numberFields)
+        for (const key of quantitiesAndPrice)
           Object.assign(fields, {
             [key]: fields[key] === "" ? null : Number(fields[key]),
           });
@@ -65,6 +70,7 @@ export function TobaccoForm({
           const tobacco = normalizeTobacco({
             ...fields,
             id: id.current,
+            rating,
             components: componentsOf([...selected, ...custom.split(",")]),
           });
           setError("");
@@ -92,14 +98,13 @@ export function TobaccoForm({
               />
             </label>
           ))}
-          {numberFields.map((key) => (
+          {quantitiesAndPrice.map((key) => (
             <label className="field" key={key}>
               {t("tobaccos.fields." + key)}
               <input
                 type="number"
-                min={key === "rating" ? 1 : 0}
-                max={key === "rating" ? 5 : undefined}
-                step={key === "rating" ? 1 : "any"}
+                min={0}
+                step="any"
                 name={key}
                 defaultValue={initial?.[key] ?? ""}
               />
@@ -120,6 +125,11 @@ export function TobaccoForm({
               ))}
             </select>
           </label>
+          <StarRating
+            label={t("tobaccos.fields.rating")}
+            value={rating}
+            onChange={setRating}
+          />
           <fieldset className="field full tobacco-components">
             <legend>{t("tobaccos.fields.components")}</legend>
             {componentsOf([...commonComponents, ...selected]).map((name) => (

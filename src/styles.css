@@ -610,3 +610,50 @@ button:disabled {
   margin-inline-start: 0;
   white-space: pre-wrap;
 }
+
+.star-rating {
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.star-rating legend {
+  padding: 0;
+  color: #ccbb9d;
+}
+
+.star-rating-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.star-rating-buttons button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid #555549;
+  border-radius: 6px;
+  background: #24271f;
+  color: #ccbb9d;
+  font-size: 25px;
+  line-height: 1;
+}
+
+.star-rating-buttons button[data-filled="true"] {
+  color: #d8b16c;
+}
+
+.star-rating-buttons button:enabled:hover {
+  border-color: #c2a473;
+}
+
+.star-rating-buttons button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.star-rating-summary {
+  margin: 6px 0 0;
+  color: #ccbb9d;
+}

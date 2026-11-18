@@ -192,6 +192,17 @@
     "originalBackupHelp": "The complete backup is unavailable. You can export the records with their remaining original copies. Photos stored only in Storage are excluded.",
     "reserved": "The record contains an internal Storage reference. Use a JSON backup exported by the app."
   },
+  "starRating": {
+    "option": "{{score}} out of 5",
+    "description": {
+      "0": "No rating",
+      "1": "Very poor",
+      "2": "Poor",
+      "3": "Fair",
+      "4": "Very good",
+      "5": "Excellent"
+    }
+  },
   "tobaccos": {
     "search": "Search tobacco",
     "title": "Pipe tobacco",
@@ -231,7 +242,7 @@
       "price": "Price (€)",
       "status": "Status",
       "intensity": "Intensity",
-      "rating": "Rating (1–5)",
+      "rating": "Personal rating",
       "notes": "Personal notes"
     },
     "states": {
