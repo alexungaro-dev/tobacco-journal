@@ -101,7 +101,7 @@ async function mock(
   };
 }
 async function openAccount(page: Page) {
-  await page.goto("/");
+  await page.goto("/#pipes");
   await page.locator(".account summary").click();
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
 }
@@ -254,7 +254,7 @@ test("PKCE password recovery, reload and password update; invalid callbacks are 
   await expect(
     page.getByRole("heading", { name: "Scegli una nuova password" }),
   ).toBeVisible();
-  await expect(page).toHaveURL(/\/#pipes$/);
+  await expect(page).toHaveURL(/\/#dashboard$/);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Scegli una nuova password" }),
@@ -277,7 +277,7 @@ test("PKCE password recovery, reload and password update; invalid callbacks are 
     "/auth/recovery#error=access_denied&error_description=sensitive",
   );
   await expect(page.getByRole("alert")).toContainText("Il link non è valido");
-  await expect(page).toHaveURL(/\/#pipes$/);
+  await expect(page).toHaveURL(/\/#dashboard$/);
 });
 
 test("expired stored session refreshes before restoring access", async ({
@@ -289,7 +289,7 @@ test("expired stored session refreshes before restoring access", async ({
       localStorage.setItem("sb-auth-test-auth-token", JSON.stringify(value)),
     session(-10),
   );
-  await page.goto("/");
+  await page.goto("/#pipes");
   await page.locator(".account summary").click();
   await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
   expect(
@@ -346,7 +346,7 @@ test("revoked refresh token returns to login without touching local data", async
     localStorage.setItem("sb-auth-test-auth-token", JSON.stringify(value));
     localStorage.setItem("tj-pipes-v1", "[]");
   }, session(-10));
-  await page.goto("/");
+  await page.goto("/#pipes");
   await page.locator(".account summary").click();
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
@@ -368,7 +368,7 @@ test("logout propagates to another tab", async ({ page, context }) => {
   await other.close();
 });
 async function openAccountSignedIn(page: Page) {
-  await page.goto("/");
+  await page.goto("/#pipes");
   await page.locator(".account summary").click();
   await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
 }

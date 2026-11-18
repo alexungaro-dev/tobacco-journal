@@ -469,5 +469,33 @@
     "saveError": "Stock preferences could not be saved.",
     "low": "Low stock",
     "empty": "Out of stock"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "signInRequired": "Sign in to view your personal dashboard.",
+    "loading": "Loading dashboard…",
+    "collection": "Your collection",
+    "newSession": "New session",
+    "openDiary": "Open journal",
+    "recent": "Recent sessions",
+    "firstSession": "Log your first session",
+    "frequency": "Smoking frequency",
+    "period": "Period",
+    "older": "Earlier periods",
+    "newer": "Later periods",
+    "page": "Page {{page}} of {{pages}}",
+    "emptyPeriod": "No sessions in this period.",
+    "latest": "Latest addition",
+    "sessionMissing": "The selected session is unavailable.",
+    "counts": {
+      "pipe": "Pipes",
+      "tobacco": "Tobaccos",
+      "cigar": "Cigar types"
+    },
+    "periods": {
+      "days": "Last 30 days",
+      "year": "Last 12 months",
+      "all": "All history"
+    }
   }
 }

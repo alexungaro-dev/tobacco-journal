@@ -19,7 +19,7 @@ test("signed-out catalogue hides local and cloud personal data; explicit import 
     (v) => localStorage.setItem("tj-pipes-v1", v),
     original,
   );
-  await page.goto("/");
+  await page.goto("/#pipes");
   await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
@@ -58,7 +58,7 @@ test("cloud CRUD, search, filters, bilingual responsive UI and JSON export", asy
   page,
 }) => {
   const api = await cloudMock(page);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await page.getByRole("button", { name: "+ Aggiungi pipa" }).click();
   await expect(page.getByLabel("Marca *")).toBeFocused();
@@ -137,7 +137,7 @@ test("local migration preserves photos, reports invalid rows, verifies retries a
     if (!localStorage.getItem("tj-pipes-v1"))
       localStorage.setItem("tj-pipes-v1", v);
   }, original);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
@@ -218,7 +218,7 @@ test("version 1 JSON import adds records without replacing the cloud catalogue",
   const api = await cloudMock(page, [
     row(OWNER_A, { id: "already", brand: "Existing", model: "Cloud" }),
   ]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await page.getByLabel("Importa dati JSON", { exact: true }).setInputFiles({
     name: "backup.json",
@@ -252,7 +252,7 @@ test("account isolation and pagination: logout clears open forms and switching u
     row(OWNER_A, { id: "3", brand: "A", model: "Three" }),
     row(OWNER_B, { id: "legacy", brand: "Other", model: "Private" }),
   ]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await expect(
     page.getByRole("heading", { name: "Peterson 999" }),
@@ -268,7 +268,7 @@ test("account isolation and pagination: logout clears open forms and switching u
   // Logout from a second tab must unmount even an open editing dialog.
   const other = await page.context().newPage();
   await cloudMock(other);
-  await other.goto("/");
+  await other.goto("/#pipes");
   await other.locator(".account summary").click();
   await expect(
     other.getByRole("button", { name: "Esci", exact: true }),
@@ -302,7 +302,7 @@ test("a late cloud response cannot repopulate the UI after logout", async ({
 }) => {
   const api = await cloudMock(page, [row()]);
   const release = api.pauseNextRead();
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await expect(page.getByText("Caricamento delle pipe cloud…")).toBeVisible();
   await page.getByRole("button", { name: "Esci", exact: true }).click();
@@ -323,7 +323,7 @@ test("network errors and lost write responses never report false success or dupl
 }) => {
   const api = await cloudMock(page);
   api.failNext("GET");
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await expect(page.getByRole("alert")).toContainText(
     "Operazione cloud non verificata",
@@ -362,7 +362,7 @@ test("expired API session hides data and an edit conflict cannot overwrite a new
   page,
 }) => {
   const api = await cloudMock(page, [row()]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await page.getByRole("button", { name: "Visualizza / Modifica →" }).click();
   api.rows[0].updated_at = "2026-11-16T19:00:00.000Z";
@@ -391,7 +391,7 @@ test("logout hides the account catalogue before the logout network request compl
   page,
 }) => {
   const api = await cloudMock(page, [row()]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await expect(
     page.getByRole("heading", { name: "Peterson 999" }),
@@ -410,7 +410,7 @@ test("migration readback failure is reported and repeating verifies the existing
   page,
 }) => {
   const api = await cloudMock(page);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await expect(page.getByText("La tua collezione inizia qui")).toBeVisible();
   await page.getByLabel("Importa dati JSON", { exact: true }).setInputFiles({
@@ -447,7 +447,7 @@ test("malformed local data and denied localStorage access remain untouched", asy
   await page.addInitScript(() =>
     localStorage.setItem("tj-pipes-v1", "{broken"),
   );
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await page
     .getByRole("button", { name: "Prepara importazione dal browser" })
@@ -486,7 +486,7 @@ test("token expiry hides cached cloud data even when Auth refresh cannot reach t
 }) => {
   await page.clock.install();
   const api = await cloudMock(page, [row()]);
-  await page.goto("/");
+  await page.goto("/#pipes");
   await signIn(page);
   await expect(
     page.getByRole("heading", { name: "Peterson 999" }),

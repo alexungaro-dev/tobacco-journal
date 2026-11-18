@@ -1,3 +1,5 @@
+import { PHOTO_STATE } from "./storage";
+import type { SummarySession } from "./dashboard";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { stockFailureKey } from "./stockAlerts";
 import { CloudPipes } from "./cloudPipes";
@@ -9,6 +11,7 @@ import {
   privatePhotoRef,
   validatePhoto,
   type PhotoEdit,
+  type PhotoRef,
 } from "./pipePhotos";
 import { CloudCigars, normalizeCigar } from "./cigars";
 import {
@@ -79,6 +82,7 @@ export type CatalogueItem = {
   name: string;
   detail: string;
   updatedAt: string;
+  createdAt: string | null;
   remaining: number | null;
   remainingLevel: RemainingLevel | null;
 };
@@ -109,9 +113,14 @@ const productConfig = {
     table: "tobaccos",
     name: "name",
     detail: "blend_type",
-    extra: ",extra",
+    extra: ",remaining:extra->remaining,remaining_level:extra->remainingLevel",
   },
-  cigar: { table: "cigars", name: "name", detail: "vitola", extra: ",extra" },
+  cigar: {
+    table: "cigars",
+    name: "name",
+    detail: "vitola",
+    extra: ",remaining:extra->remaining,remaining_level:extra->remainingLevel",
+  },
 } as const;
 
 function invalid(): never {
@@ -369,6 +378,72 @@ export class SmokingJournal {
     );
   }
 
+  async summaries(): Promise<SummarySession[]> {
+    const rows = await this.page(
+      "smoking_sessions",
+      "id,user_id,kind,started_at,rating,product:extra->product,pipe:extra->pipe",
+    );
+    return rows.map((row) => {
+      const { id, kind, startedAt, rating, product, pipe } = normalizeSession(
+        {
+          id: row.id,
+          kind: row.kind,
+          startedAt: row.started_at,
+          rating: row.rating,
+          product: row.product ?? emptySnapshot,
+          pipe: row.pipe ?? emptySnapshot,
+        },
+        true,
+      );
+      return { id, kind, startedAt, rating, product, pipe };
+    });
+  }
+
+  async cataloguePhoto(kind: ProductKind, id: string) {
+    await this.auth.guard();
+    const { data, error } = await this.client
+      .from(productConfig[kind].table)
+      .select(kind === "pipe" ? "user_id,legacy_payload" : "user_id,extra")
+      .eq("user_id", this.owner)
+      .eq("id", id)
+      .retry(false)
+      .abortSignal(this.signal)
+      .maybeSingle();
+    if (error) throw error;
+    this.signal.throwIfAborted();
+    if (!data) return;
+    if (data.user_id !== this.owner)
+      throw new CloudError("cloud.errors.response");
+    const payload =
+      (kind === "pipe"
+        ? (data as { legacy_payload?: Record<string, unknown> }).legacy_payload
+        : (data as { extra?: Record<string, unknown> }).extra) ?? {};
+    const legacy =
+      kind === "pipe" ? payload.photo : payload.pendingCataloguePhoto;
+    const photos = new PipePhotos(
+      this.client,
+      this.owner,
+      this.signal,
+      () => this.auth.guard(),
+      kind,
+    );
+    const ref = privatePhotoRef(
+      kind === "pipe" ? payload[PHOTO_STATE] : payload.cataloguePhoto,
+      this.owner,
+      kind,
+    );
+    let download: Promise<Blob> | undefined;
+    return {
+      ref,
+      legacy: typeof legacy === "string" ? legacy : undefined,
+      read: (key: string, photo: PhotoRef) => {
+        if (key !== id || photo !== ref) throw new CloudError("photos.integrity");
+        // A single overview thumbnail shares its download across repeated effects.
+        return (download ??= photos.read(key, photo));
+      },
+    };
+  }
+
   async catalogue(): Promise<Catalogue> {
     const kinds = ["pipe", "tobacco", "cigar"] as const;
     const entries = await Promise.all(
@@ -376,23 +451,24 @@ export class SmokingJournal {
         const { table, name, detail, extra } = productConfig[kind];
         const rows = await this.page(
           table,
-          `id,user_id,brand,${name},${detail},updated_at${extra}`,
+          `id,user_id,brand,${name},${detail},updated_at,created_at${extra}`,
         );
         return [
           kind,
           rows.map((row) => {
-            const stock = row.extra as Record<string, unknown> | undefined;
             return {
               id: String(row.id),
               brand: String(row.brand ?? ""),
               name: String(row[name] || row.brand || row.id),
               detail: String(row[detail] ?? ""),
               updatedAt: String(row.updated_at),
+              createdAt:
+                typeof row.created_at === "string" ? row.created_at : null,
               remaining:
-                typeof stock?.remaining === "number" ? stock.remaining : null,
+                typeof row.remaining === "number" ? row.remaining : null,
               remainingLevel:
                 remainingLevels.find(
-                  (level) => level === stock?.remainingLevel,
+                  (level) => level === row.remaining_level,
                 ) ?? null,
             };
           }),

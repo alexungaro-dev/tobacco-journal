@@ -1,11 +1,25 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { APP_NAME, APP_MONOGRAM, MODULES, type Module } from "./config";
 import { LANGUAGE_KEY } from "./i18n";
 import { useAuthContext } from "./auth/AuthContext";
 import { TobaccoCatalogue } from "./components/TobaccoCatalogue";
 import { StockAlertPreferences } from "./components/StockAlerts";
+import type { Catalogue } from "./data/smokingJournal";
 import { CloudCatalogue } from "./components/CloudCatalogue";
+const DashboardView = lazy(() =>
+  import("./components/DashboardView").then((m) => ({
+    default: m.DashboardView,
+  })),
+);
 const SmokingJournalView = lazy(() =>
   import("./components/SmokingJournalView").then((m) => ({
     default: m.SmokingJournalView,
@@ -19,16 +33,46 @@ const CigarCatalogue = lazy(() =>
 const Account = lazy(() =>
   import("./components/Account").then((m) => ({ default: m.Account })),
 );
-function currentModule(): Module {
-  const value = location.hash.slice(1);
-  return MODULES.includes(value as Module) ? (value as Module) : "pipes";
+function currentModule(hash: string): Module {
+  const value = hash.slice(1).split("/")[0];
+  return MODULES.includes(value as Module) ? (value as Module) : "dashboard";
+}
+
+function diaryShortcut(hash: string) {
+  if (hash === "#diary/new") return { create: true } as const;
+  const prefix = "#diary/session/";
+  if (hash.startsWith(prefix)) {
+    try {
+      return { sessionId: decodeURIComponent(hash.slice(prefix.length)) };
+    } catch {
+      return undefined;
+    }
+  }
 }
 export default function App() {
   const { t, i18n } = useTranslation();
   const auth = useAuthContext();
-  const [module, setModule] = useState<Module>(currentModule);
+  const [hash, setHash] = useState(() => location.hash);
+  const module = currentModule(hash);
+  const shortcut = useMemo(() => diaryShortcut(hash), [hash]);
+  const cached = useRef<{ owner: string; catalogue: Catalogue } | undefined>(
+    undefined,
+  );
+  const rememberCatalogue = useCallback(
+    (owner: string, catalogue: Catalogue) => {
+      cached.current = { owner, catalogue };
+    },
+    [],
+  );
+  const clearShortcut = useCallback(() => {
+    history.replaceState(history.state, "", "#diary");
+    setHash("#diary");
+  }, []);
   useEffect(() => {
-    const listener = () => setModule(currentModule());
+    if (!auth.session || module !== "diary") cached.current = undefined;
+  }, [auth.session?.user.id, module]);
+  useEffect(() => {
+    const listener = () => setHash(location.hash);
     window.addEventListener("hashchange", listener);
     return () => window.removeEventListener("hashchange", listener);
   }, []);
@@ -38,7 +82,7 @@ export default function App() {
   }, [i18n.language, module, t]);
   function navigate(next: Module) {
     location.hash = next;
-    setModule(next);
+    setHash(location.hash);
   }
   return (
     <>
@@ -86,22 +130,10 @@ export default function App() {
             </button>
           ))}
         </nav>
-        {module !== "pipes" &&
-        module !== "tobaccos" &&
-        module !== "cigars" &&
-        module !== "diary" ? (
-          <section className="placeholder">
-            <div className="eyebrow">{APP_NAME}</div>
-            <h1>{t("soonTitle", { module: t(`nav.${module}`) })}</h1>
-            <p>{t("soonText")}</p>
-            <button className="btn secondary" onClick={() => navigate("pipes")}>
-              {t("back")}
-            </button>
-          </section>
-        ) : auth.session &&
-          !auth.loading &&
-          !auth.sessionError &&
-          !auth.recovery ? (
+        {auth.session &&
+        !auth.loading &&
+        !auth.sessionError &&
+        !auth.recovery ? (
           auth.profileReady ? (
             module === "pipes" ? (
               <CloudCatalogue
@@ -114,8 +146,19 @@ export default function App() {
               <StockAlertPreferences
                 key={auth.session.user.id}
                 owner={auth.session.user.id}
+                showSettings={module !== "dashboard"}
               >
-                {module === "diary" ? (
+                {module === "dashboard" ? (
+                  <Suspense
+                    fallback={<p role="status">{t("dashboard.loading")}</p>}
+                  >
+                    <DashboardView
+                      owner={auth.session.user.id}
+                      onSessionLost={auth.invalidateSession}
+                      rememberCatalogue={rememberCatalogue}
+                    />
+                  </Suspense>
+                ) : module === "diary" ? (
                   <Suspense
                     fallback={<p role="status">{t("diary.working")}</p>}
                   >
@@ -124,6 +167,13 @@ export default function App() {
                       userId={auth.session.user.id}
                       email={auth.session.user.email || ""}
                       onSessionLost={auth.invalidateSession}
+                      shortcut={shortcut}
+                      onShortcutOpened={clearShortcut}
+                      initialCatalogue={
+                        cached.current?.owner === auth.session.user.id
+                          ? cached.current.catalogue
+                          : undefined
+                      }
                     />
                   </Suspense>
                 ) : module === "cigars" ? (
@@ -161,9 +211,11 @@ export default function App() {
               {t(
                 auth.loading
                   ? "auth.loading"
-                  : module === "diary"
-                    ? "diary.signInRequired"
-                    : "cloud.signInRequired",
+                  : module === "dashboard"
+                    ? "dashboard.signInRequired"
+                    : module === "diary"
+                      ? "diary.signInRequired"
+                      : "cloud.signInRequired",
               )}
             </p>
           </section>

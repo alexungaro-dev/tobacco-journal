@@ -469,5 +469,33 @@
     "saveError": "Impossibile salvare le preferenze di scorta.",
     "low": "Scorta bassa",
     "empty": "Esaurito"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "signInRequired": "Accedi per visualizzare la tua dashboard personale.",
+    "loading": "Caricamento dashboard…",
+    "collection": "La tua collezione",
+    "newSession": "Nuova fumata",
+    "openDiary": "Apri Diario",
+    "recent": "Ultime fumate",
+    "firstSession": "Registra la prima fumata",
+    "frequency": "Frequenza delle fumate",
+    "period": "Periodo",
+    "older": "Periodi precedenti",
+    "newer": "Periodi successivi",
+    "page": "Pagina {{page}} di {{pages}}",
+    "emptyPeriod": "Nessuna fumata in questo periodo.",
+    "latest": "Ultimo prodotto aggiunto",
+    "sessionMissing": "La fumata selezionata non è disponibile.",
+    "counts": {
+      "pipe": "Pipe",
+      "tobacco": "Tabacchi",
+      "cigar": "Tipologie di sigari"
+    },
+    "periods": {
+      "days": "Ultimi 30 giorni",
+      "year": "Ultimi 12 mesi",
+      "all": "Tutto lo storico"
+    }
   }
 }

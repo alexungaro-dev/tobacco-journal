@@ -20,6 +20,7 @@ import type { PhotoRef } from "../data/pipePhotos";
 import { downloadJson, MAX_BACKUP_BYTES } from "../data/storage";
 import { confirmedStock, type StockOutcome } from "../data/stockAlerts";
 import { StockAlertBadge } from "./StockAlerts";
+import { JournalProvenance, snapshotLabel as label } from "./JournalProvenance";
 import { JournalForm } from "./JournalForm";
 import { PipePhoto } from "./PipePhoto";
 
@@ -28,8 +29,6 @@ const pendingPhoto = (row?: SessionRow) =>
   typeof row?.extra.pendingJournalPhoto === "string"
     ? row.extra.pendingJournalPhoto
     : undefined;
-const label = (item: Snapshot) =>
-  [item.brand, item.name].filter(Boolean).join(" ");
 const productKey = (item: Snapshot) =>
   item.catalogueId
     ? JSON.stringify([item.catalogueId])
@@ -39,10 +38,16 @@ export function SmokingJournalView({
   userId,
   email,
   onSessionLost,
+  shortcut,
+  onShortcutOpened,
+  initialCatalogue,
 }: {
   userId: string;
   email: string;
   onSessionLost: () => void;
+  shortcut?: { create: true } | { sessionId: string };
+  onShortcutOpened?: () => void;
+  initialCatalogue?: Catalogue;
 }) {
   const { t, i18n } = useTranslation();
   const scope = useRef<SmokingJournal | null>(null);
@@ -50,6 +55,7 @@ export function SmokingJournalView({
   invalidate.current = onSessionLost;
   const lock = useRef(false);
   const input = useRef<HTMLInputElement>(null);
+  const targetCard = useRef<HTMLElement>(null);
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [catalogue, setCatalogue] = useState(blankCatalogue);
   const [ready, setReady] = useState(false);
@@ -102,13 +108,13 @@ export function SmokingJournalView({
     }
   }
 
-  async function load(service: SmokingJournal) {
+  async function load(service: SmokingJournal, cachedCatalogue?: Catalogue) {
     let sessions: SessionRow[];
     let items: Catalogue;
     try {
       [sessions, items] = await Promise.all([
         service.list(),
-        service.catalogue(),
+        cachedCatalogue ?? service.catalogue(),
       ]);
     } catch (failure) {
       if (
@@ -132,7 +138,7 @@ export function SmokingJournalView({
     const controller = new AbortController();
     scope.current = new SmokingJournal(supabase!, userId, controller.signal);
     lock.current = false;
-    void run(load);
+    void run((service) => load(service, initialCatalogue));
     return () => {
       scope.current = null;
       controller.abort();
@@ -266,22 +272,23 @@ export function SmokingJournalView({
         (filters.order === "asc" ? -1 : 1),
     );
 
-  const blocked = !ready || busy || editing !== undefined;
-  function provenance(kind: ProductKind, snapshot: Snapshot) {
-    if (
-      snapshot.source === "owned" ||
-      (!snapshot.brand &&
-        !snapshot.name &&
-        !snapshot.detail &&
-        !snapshot.catalogueId)
-    )
-      return null;
-    const key = snapshot.source === "gift" ? `${kind}.gift` : "other";
-    return (
-      <span className="journal-provenance">{t("diary.provenance." + key)}</span>
-    );
-  }
+  useEffect(() => {
+    if (ready && shortcut && "create" in shortcut) {
+      setEditing(null);
+      onShortcutOpened?.();
+    }
+  }, [ready, shortcut, onShortcutOpened]);
 
+  const targetId =
+    shortcut && "sessionId" in shortcut ? shortcut.sessionId : undefined;
+  useEffect(() => {
+    if (ready && targetId !== undefined) targetCard.current?.focus();
+  }, [ready, targetId]);
+  const displayed =
+    targetId !== undefined
+      ? entries.filter(({ row }) => row.id === targetId)
+      : visible;
+  const blocked = !ready || busy || editing !== undefined;
   function describe(kind: ProductKind, product: Snapshot) {
     return (
       <div className="journal-snapshot">
@@ -290,7 +297,7 @@ export function SmokingJournalView({
           {[label(product), product.detail].filter(Boolean).join(" · ") ||
             t("diary.historical")}
         </span>
-        {provenance(kind, product)}
+        <JournalProvenance kind={kind} snapshot={product} />
         {product.offeredBy && (
           <span>
             {t("diary.offeredBy")}: {product.offeredBy}
@@ -309,9 +316,9 @@ export function SmokingJournalView({
     );
   }
 
-  function details(item: Session) {
+  function details(item: Session, expanded: boolean) {
     return (
-      <details className="cigar-advanced">
+      <details className="cigar-advanced" open={expanded || undefined}>
         <summary>{t("diary.view")}</summary>
         {describe(item.kind === "pipe" ? "tobacco" : "cigar", item.product)}
         {item.pipe && describe("pipe", item.pipe)}
@@ -458,91 +465,112 @@ export function SmokingJournalView({
           }}
         />
       )}
-      <div className="controls journal-controls">
-        <input
-          type="search"
-          className="search"
-          aria-label={t("diary.search")}
-          placeholder={t("diary.search")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="filter"
-          aria-label={t("diary.kind")}
-          value={filters.kind}
-          onChange={(e) => setFilter("kind", e.target.value)}
-        >
-          <option value="">{t("diary.allKinds")}</option>
-          <option value="pipe">{t("diary.kinds.pipe")}</option>
-          <option value="cigar">{t("diary.kinds.cigar")}</option>
-        </select>
-        <select
-          className="filter"
-          aria-label={t("diary.product")}
-          value={filters.product}
-          onChange={(e) => setFilter("product", e.target.value)}
-        >
-          <option value="">{t("diary.allProducts")}</option>
-          {[...products].map(([key, value]) => (
-            <option key={key} value={key}>
-              {value}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter"
-          aria-label={t("diary.rating")}
-          value={filters.rating}
-          onChange={(e) => setFilter("rating", e.target.value)}
-        >
-          <option value="">{t("diary.allRatings")}</option>
-          <option value="none">{t("starRating.description.0")}</option>
-          {[1, 2, 3, 4, 5].map((value) => (
-            <option key={value} value={value}>
-              {value}/5
-            </option>
-          ))}
-        </select>
-        <label className="field">
-          {t("diary.from")}
-          <input
-            type="date"
-            value={filters.from}
-            onChange={(e) => setFilter("from", e.target.value)}
-          />
-        </label>
-        <label className="field">
-          {t("diary.to")}
-          <input
-            type="date"
-            value={filters.to}
-            onChange={(e) => setFilter("to", e.target.value)}
-          />
-        </label>
-        <label className="field">
-          {t("diary.order")}
-          <select
-            aria-label={t("diary.order")}
-            value={filters.order}
-            onChange={(e) => setFilter("order", e.target.value)}
-          >
-            <option value="desc">{t("diary.newest")}</option>
-            <option value="asc">{t("diary.oldest")}</option>
-          </select>
-        </label>
-      </div>
-      <p className="count">
-        {t("count", { visible: visible.length, total: rows.length })}
-      </p>
+      {targetId !== undefined ? (
+        <p>
+          <a className="link" href="#diary">
+            {t("dashboard.openDiary")}
+          </a>
+        </p>
+      ) : (
+        <>
+          <div className="controls journal-controls">
+            <input
+              type="search"
+              className="search"
+              aria-label={t("diary.search")}
+              placeholder={t("diary.search")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className="filter"
+              aria-label={t("diary.kind")}
+              value={filters.kind}
+              onChange={(e) => setFilter("kind", e.target.value)}
+            >
+              <option value="">{t("diary.allKinds")}</option>
+              <option value="pipe">{t("diary.kinds.pipe")}</option>
+              <option value="cigar">{t("diary.kinds.cigar")}</option>
+            </select>
+            <select
+              className="filter"
+              aria-label={t("diary.product")}
+              value={filters.product}
+              onChange={(e) => setFilter("product", e.target.value)}
+            >
+              <option value="">{t("diary.allProducts")}</option>
+              {[...products].map(([key, value]) => (
+                <option key={key} value={key}>
+                  {value}
+                </option>
+              ))}
+            </select>
+            <select
+              className="filter"
+              aria-label={t("diary.rating")}
+              value={filters.rating}
+              onChange={(e) => setFilter("rating", e.target.value)}
+            >
+              <option value="">{t("diary.allRatings")}</option>
+              <option value="none">{t("starRating.description.0")}</option>
+              {[1, 2, 3, 4, 5].map((value) => (
+                <option key={value} value={value}>
+                  {value}/5
+                </option>
+              ))}
+            </select>
+            <label className="field">
+              {t("diary.from")}
+              <input
+                type="date"
+                value={filters.from}
+                onChange={(e) => setFilter("from", e.target.value)}
+              />
+            </label>
+            <label className="field">
+              {t("diary.to")}
+              <input
+                type="date"
+                value={filters.to}
+                onChange={(e) => setFilter("to", e.target.value)}
+              />
+            </label>
+            <label className="field">
+              {t("diary.order")}
+              <select
+                aria-label={t("diary.order")}
+                value={filters.order}
+                onChange={(e) => setFilter("order", e.target.value)}
+              >
+                <option value="desc">{t("diary.newest")}</option>
+                <option value="asc">{t("diary.oldest")}</option>
+              </select>
+            </label>
+          </div>
+          <p className="count">
+            {t("count", { visible: visible.length, total: rows.length })}
+          </p>
+        </>
+      )}
       <section className="grid" aria-busy={busy}>
-        {ready && !busy && !visible.length && (
+        {ready && !busy && !displayed.length && (
           <p className="empty">
-            {t(rows.length ? "noResults" : "diary.empty")}
+            {t(
+              targetId !== undefined
+                ? "dashboard.sessionMissing"
+                : rows.length
+                  ? "noResults"
+                  : "diary.empty",
+            )}
           </p>
         )}
-        {visible.map(({ row, item }) => (
-          <article className="card" key={row.id}>
+        {displayed.map(({ row, item }) => (
+          <article
+            className="card"
+            key={row.id}
+            ref={row.id === targetId ? targetCard : undefined}
+            tabIndex={row.id === targetId ? -1 : undefined}
+          >
             {row.extra.journalPhoto || pendingPhoto(row) ? (
               <div className="photo">
                 <PipePhoto
@@ -566,10 +594,10 @@ export function SmokingJournalView({
                 <h3 className="name">
                   {label(item.product) || t("diary.historical")}
                 </h3>
-                {provenance(
-                  item.kind === "pipe" ? "tobacco" : "cigar",
-                  item.product,
-                )}
+                <JournalProvenance
+                  kind={item.kind === "pipe" ? "tobacco" : "cigar"}
+                  snapshot={item.product}
+                />
               </div>
               {item.pipe && (
                 <div className="journal-origin-row journal-pipe-origin">
@@ -577,7 +605,7 @@ export function SmokingJournalView({
                     {t("diary.entity.pipe")}:{" "}
                     {label(item.pipe) || t("diary.historical")}
                   </span>
-                  {provenance("pipe", item.pipe)}
+                  <JournalProvenance kind="pipe" snapshot={item.pipe} />
                 </div>
               )}
               {item.rating !== null && (
@@ -586,7 +614,7 @@ export function SmokingJournalView({
                 </p>
               )}
               {pendingPhoto(row) && <p>{t("diary.pendingPhoto")}</p>}
-              {details(item)}
+              {details(item, row.id === targetId)}
               <button
                 className="link"
                 disabled={blocked}
