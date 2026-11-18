@@ -1,5 +1,5 @@
 import type { Pipe } from "../types";
-import { isPipe } from "./storage";
+import { isPipe, PHOTO_STATE } from "./storage";
 export interface PipeRow {
   id: string;
   user_id: string;
@@ -57,6 +57,7 @@ export function validDate(value: string) {
 }
 export function validationReason(value: unknown): string | null {
   if (!isPipe(value)) return "cloud.reasons.format";
+  if (Object.hasOwn(value, PHOTO_STATE)) return "photos.reserved";
   if (!safeJson(value)) return "cloud.reasons.json";
   if (value.price != null && value.price < 0) return "cloud.reasons.price";
   if (value.date && !validDate(value.date)) return "cloud.reasons.date";
@@ -93,8 +94,9 @@ export function fromRow(row: PipeRow, userId: string): Pipe {
   ) {
     throw new CloudError("cloud.errors.response");
   }
+  const { [PHOTO_STATE]: _photoState, ...payload } = row.legacy_payload;
   const p: Pipe = {
-    ...row.legacy_payload,
+    ...payload,
     id: row.id,
     brand: row.brand,
     model: row.model,
@@ -126,9 +128,20 @@ function stable(value: unknown): string {
       .join(",")}}`;
   return JSON.stringify(value);
 }
-export function matchesImport(actual: PipeRow, expected: PipeInsert) {
+export function matchesImport(
+  actual: PipeRow,
+  expected: PipeInsert,
+  ignorePhotoState = false,
+) {
+  const { [PHOTO_STATE]: _photoState, ...payload } =
+    actual.legacy_payload ?? {};
   return Object.entries(expected).every(
-    ([key, value]) => stable(actual[key as keyof PipeRow]) === stable(value),
+    ([key, value]) =>
+      stable(
+        ignorePhotoState && key === "legacy_payload"
+          ? payload
+          : actual[key as keyof PipeRow],
+      ) === stable(value),
   );
 }
 export interface ImportItem {

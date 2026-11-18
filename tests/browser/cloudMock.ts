@@ -3,7 +3,7 @@ export const AUTH_ORIGIN = "https://auth-test.supabase.co";
 export const OWNER_A = "11111111-1111-1111-1111-111111111111";
 export const OWNER_B = "22222222-2222-2222-2222-222222222222";
 export const PHOTO =
-  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a4WQAAAAASUVORK5CYII=";
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGNoEFEBAAHQALnTUbepAAAAAElFTkSuQmCC";
 export const LEGACY = {
   id: "legacy",
   brand: "Peterson",
@@ -70,6 +70,10 @@ export async function cloudMock(
   initial: ReturnType<typeof row>[] = [],
 ) {
   const rows = structuredClone(initial);
+  const objects = new Map<string, { bytes: Buffer; type: string }>();
+  const media: Record<string, any>[] = [];
+  let photoFault = "";
+  let holdUpload: Promise<void> | undefined;
   const requests: {
     method: string;
     path: string;
@@ -88,7 +92,8 @@ export async function cloudMock(
     const request = route.request(),
       url = new URL(request.url()),
       method = request.method();
-    const body = request.postDataJSON();
+    const storage = url.pathname.startsWith("/storage/v1/object");
+    const body = storage && method === "POST" ? null : request.postDataJSON();
     const headers = request.headers();
     let owner: string | null = null;
     try {
@@ -131,6 +136,102 @@ export async function cloudMock(
     else if (url.pathname === "/rest/v1/profiles") {
       status = 201;
       data = null;
+    } else if (storage) {
+      const root = "/storage/v1/object/journal-photos";
+      const path = decodeURIComponent(url.pathname.slice(root.length + 1));
+      const paths: string[] = method === "DELETE" ? body.prefixes : [path];
+      if (
+        !owner ||
+        !url.pathname.startsWith(root) ||
+        !paths.every((p) => p.startsWith(owner + "/"))
+      ) {
+        status = 403;
+        data = { message: "RLS" };
+      } else if (method === "POST") {
+        if (holdUpload) {
+          const held = holdUpload;
+          holdUpload = undefined;
+          await held;
+        }
+        if (photoFault === "upload") {
+          photoFault = "";
+          await route.abort("failed");
+          return;
+        }
+        if (objects.has(path)) {
+          status = 409;
+          data = { message: "Exists" };
+        } else {
+          objects.set(path, {
+            bytes: request.postDataBuffer()!,
+            type: headers["content-type"],
+          });
+          data = { Id: path, Key: path };
+        }
+        if (photoFault === "lost-upload") {
+          photoFault = "";
+          await route.abort("failed");
+          return;
+        }
+      } else if (method === "GET") {
+        const object = objects.get(path);
+        if (object) {
+          await route
+            .fulfill({ contentType: object.type, body: object.bytes })
+            .catch(() => {});
+          return;
+        }
+        status = 404;
+        data = { message: "Missing object" };
+      } else if (method === "DELETE") {
+        if (photoFault === "cleanup") {
+          photoFault = "";
+          status = 500;
+          data = { message: "File cleanup unavailable" };
+        } else {
+          paths.forEach((p) => objects.delete(p));
+          data = paths.map((name) => ({ name }));
+        }
+      }
+    } else if (url.pathname === "/rest/v1/media") {
+      const filters = [...url.searchParams].filter(([, value]) =>
+        value.startsWith("eq."),
+      );
+      if (
+        !owner ||
+        (method === "POST"
+          ? body.user_id !== owner ||
+            !body.object_path.startsWith(owner + "/") ||
+            !rows.some((r) => r.user_id === owner && r.id === body.pipe_id)
+          : url.searchParams.get("user_id") !== `eq.${owner}`)
+      ) {
+        status = 403;
+        data = { code: "42501", message: "RLS" };
+      } else if (method === "POST") {
+        if (photoFault === "metadata") {
+          photoFault = "";
+          await route.abort("failed");
+          return;
+        }
+        if (!media.some((m) => m.object_path === body.object_path))
+          media.push(body);
+        status = 201;
+        data = null;
+        if (photoFault === "lost-metadata") {
+          photoFault = "";
+          await route.abort("failed");
+          return;
+        }
+      } else {
+        const selected = media.filter(
+          (m) =>
+            m.user_id === owner &&
+            filters.every(([key, value]) => m[key] === value.slice(3)),
+        );
+        if (method === "DELETE")
+          selected.forEach((m) => media.splice(media.indexOf(m), 1));
+        data = selected;
+      }
     } else if (url.pathname === "/rest/v1/pipes") {
       if (unauthorized) {
         status = 401;
@@ -211,9 +312,20 @@ export async function cloudMock(
               ).toISOString(),
             });
           data = selected.length === 1 ? selected[0] : null;
+          if (photoFault === "lost-pipe") {
+            photoFault = "";
+            await route.abort("failed");
+            return;
+          }
         } else if (method === "DELETE") {
           data = selected.map((r) => ({ id: r.id }));
-          for (const r of selected) rows.splice(rows.indexOf(r), 1);
+          for (const r of selected) {
+            rows.splice(rows.indexOf(r), 1);
+            for (const item of media.filter(
+              (m) => m.user_id === owner && m.pipe_id === r.id,
+            ))
+              media.splice(media.indexOf(item), 1);
+          }
         }
       }
     }
@@ -241,6 +353,18 @@ export async function cloudMock(
   return {
     rows,
     requests,
+    objects,
+    media,
+    failPhoto: (stage: string) => {
+      photoFault = stage;
+    },
+    pauseUpload: () => {
+      let release!: () => void;
+      holdUpload = new Promise((resolve) => {
+        release = resolve;
+      });
+      return release;
+    },
     failNext: (method: string) => {
       fail = method;
     },

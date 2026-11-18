@@ -558,3 +558,18 @@ button:disabled {
 .migration p { line-height: 1.6; }
 .importissues { max-height: 240px; overflow: auto; }
 .pipefields { border: 0; margin: 0; padding: 0; min-width: 0; }
+
+.photo {
+  position: relative;
+}
+.photostatus {
+  position: absolute;
+  inset: auto 0 0;
+  padding: 0.35rem 0.6rem;
+  color: #fff4e5;
+  background: #241b15e8;
+  font-size: 0.8rem;
+}
+.field .photostatus {
+  position: static;
+}

@@ -1,10 +1,13 @@
 import { useTranslation } from "react-i18next";
+import { PipePhoto, type PrivatePhoto } from "./PipePhoto";
 import type { Pipe } from "../types";
 export function PipeCard({
   pipe: p,
   onEdit,
+  photo,
 }: {
   pipe: Pipe;
+  photo: PrivatePhoto;
   onEdit: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -16,16 +19,12 @@ export function PipeCard({
   return (
     <article className="card">
       <div className="photo">
-        {p.photo ? (
-          <img
-            src={p.photo}
-            alt={t("photoAlt", { name: `${p.brand} ${p.model}` })}
-          />
-        ) : (
-          <span className="silhouette" aria-hidden="true">
-            ♧
-          </span>
-        )}
+        <PipePhoto
+          id={p.id}
+          legacy={p.photo}
+          photo={photo}
+          alt={t("photoAlt", { name: `${p.brand} ${p.model}` })}
+        />
       </div>
       <div className="info">
         <h3 className="name">
