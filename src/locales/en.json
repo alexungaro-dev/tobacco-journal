@@ -444,7 +444,24 @@
     "stockUnavailable": "Stock could not be deducted: the quantity is insufficient or unspecified. The session was not recorded. Retry without deducting stock or reload the journal.",
     "stockUpdated": "Stock updated.",
     "stockUnverified": "Stock update could not be confirmed.",
-    "stockUnchanged": "Stock unchanged."
+    "stockUnchanged": "Stock unchanged.",
+    "provenance": {
+      "product": {
+        "owned": "From my collection",
+        "other": "Uncatalogued"
+      },
+      "pipe": {
+        "owned": "Pipe from my collection",
+        "gift": "Borrowed pipe",
+        "other": "Uncatalogued pipe"
+      },
+      "tobacco": {
+        "gift": "Gifted tobacco"
+      },
+      "cigar": {
+        "gift": "Gifted cigar"
+      }
+    }
   },
   "stockAlerts": {
     "settings": "Stock alerts",

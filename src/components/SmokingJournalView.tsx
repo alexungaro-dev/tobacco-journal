@@ -267,6 +267,23 @@ export function SmokingJournalView({
     );
 
   const blocked = !ready || busy || editing !== undefined;
+  function provenance(kind: ProductKind, snapshot: Snapshot) {
+    if (
+      !snapshot.brand &&
+      !snapshot.name &&
+      !snapshot.detail &&
+      !snapshot.catalogueId
+    )
+      return null;
+    const key =
+      kind === "pipe" || snapshot.source === "gift"
+        ? `${kind}.${snapshot.source}`
+        : `product.${snapshot.source}`;
+    return (
+      <span className="journal-provenance">{t("diary.provenance." + key)}</span>
+    );
+  }
+
   function describe(kind: ProductKind, product: Snapshot) {
     return (
       <div className="journal-snapshot">
@@ -275,11 +292,12 @@ export function SmokingJournalView({
           {[label(product), product.detail].filter(Boolean).join(" · ") ||
             t("diary.historical")}
         </span>
-        <span>
-          {t("diary.sources." + product.source)}
-          {product.offeredBy &&
-            ` · ${t("diary.offeredBy")}: ${product.offeredBy}`}
-        </span>
+        {provenance(kind, product)}
+        {product.offeredBy && (
+          <span>
+            {t("diary.offeredBy")}: {product.offeredBy}
+          </span>
+        )}
         {product.source !== "owned" && product.brand && product.name && (
           <button
             className="link"
@@ -546,10 +564,24 @@ export function SmokingJournalView({
                   {formatDate.format(new Date(item.startedAt))}
                 </time>
               </p>
-              <h3 className="name">
-                {label(item.product) || t("diary.historical")}
-              </h3>
-              {item.pipe && <p>{label(item.pipe) || t("diary.historical")}</p>}
+              <div className="journal-origin-row">
+                <h3 className="name">
+                  {label(item.product) || t("diary.historical")}
+                </h3>
+                {provenance(
+                  item.kind === "pipe" ? "tobacco" : "cigar",
+                  item.product,
+                )}
+              </div>
+              {item.pipe && (
+                <div className="journal-origin-row journal-pipe-origin">
+                  <span>
+                    {t("diary.entity.pipe")}:{" "}
+                    {label(item.pipe) || t("diary.historical")}
+                  </span>
+                  {provenance("pipe", item.pipe)}
+                </div>
+              )}
               {item.rating !== null && (
                 <p>
                   {item.rating}/5 · {t("starRating.description." + item.rating)}

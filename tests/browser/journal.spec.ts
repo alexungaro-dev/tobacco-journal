@@ -124,7 +124,17 @@ test("pipe provenance is independent and stock changes only the selected tobacco
     remainingLevel: "half",
     status: "sealed",
   });
+  await expect(
+    added.locator(".journal-origin-row").first().locator(".journal-provenance"),
+  ).toHaveText("Dalla mia collezione");
+  await expect(
+    added.locator(".journal-pipe-origin .journal-provenance"),
+  ).toHaveText("Pipa prestata");
   await added.getByText("Dettagli della fumata").click();
+  await expect(
+    added.locator(".journal-snapshot .journal-provenance"),
+  ).toHaveText(["Dalla mia collezione", "Pipa prestata"]);
+  await expect(added.getByText("Offerto da: Anna")).toBeVisible();
   await expect(added).toContainText("Caricamento leggero");
   await expect(added).toContainText("Vaniglia");
   accept(page);
@@ -149,7 +159,16 @@ test("pipe provenance is independent and stock changes only the selected tobacco
     .selectOption("legacy");
   await expect(editor(page).getByLabel("Aggiorna scorta")).toHaveCount(0);
   await save(page).click();
-  await expect(card(page, "Tabacco offerto")).toBeVisible();
+  const gifted = card(page, "Tabacco offerto");
+  await expect(
+    gifted
+      .locator(".journal-origin-row")
+      .first()
+      .locator(".journal-provenance"),
+  ).toHaveText("Tabacco offerto");
+  await expect(
+    gifted.locator(".journal-pipe-origin .journal-provenance"),
+  ).toHaveText("Pipa della mia collezione");
   expect(api.sessions[1]).toMatchObject({
     tobacco_id: null,
     pipe_id: "legacy",
@@ -263,4 +282,59 @@ test("switching accounts during photo upload prevents late attachment and reject
     { url: request.url(), token: authSession(OWNER_B).access_token },
   );
   expect(code).toBe(403);
+});
+
+test("gifted and uncatalogued cigars show localized provenance in compact cards and details", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const gifted = journalRow(OWNER_A, "gifted", "Reserva");
+  gifted.extra.product = {
+    brand: "Amico",
+    name: "Reserva",
+    source: "gift",
+    offeredBy: "Luca",
+  };
+  const unlisted = journalRow(OWNER_A, "unlisted", "Toscano");
+  const historical = journalRow(OWNER_A, "historical");
+  historical.extra = {};
+  await cloudMock(page, [], [], [], [gifted, unlisted, historical]);
+  await open(page);
+
+  const giftCard = card(page, "Amico Reserva");
+  await expect(
+    giftCard.locator(".journal-origin-row .journal-provenance"),
+  ).toHaveText("Sigaro offerto");
+  await expect(
+    card(page, "Guest Toscano").locator(
+      ".journal-origin-row .journal-provenance",
+    ),
+  ).toHaveText("Non catalogata");
+  await expect(card(page, "Riferimento storico")).toBeVisible();
+  await expect(
+    card(page, "Riferimento storico").locator(".journal-provenance"),
+  ).toHaveCount(0);
+  await giftCard.getByText("Dettagli della fumata").click();
+  await expect(
+    giftCard.locator(".journal-snapshot .journal-provenance"),
+  ).toHaveText("Sigaro offerto");
+  await expect(giftCard.getByText("Offerto da: Luca")).toBeVisible();
+  expect(
+    await giftCard.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth + 1,
+    ),
+  ).toBe(true);
+
+  await page.locator("select.language").selectOption("en");
+  await expect(
+    giftCard.locator(".journal-origin-row .journal-provenance"),
+  ).toHaveText("Gifted cigar");
+  await expect(
+    giftCard.locator(".journal-snapshot .journal-provenance"),
+  ).toHaveText("Gifted cigar");
+  await expect(
+    card(page, "Guest Toscano").locator(
+      ".journal-origin-row .journal-provenance",
+    ),
+  ).toHaveText("Uncatalogued");
 });

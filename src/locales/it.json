@@ -444,7 +444,24 @@
     "stockUnavailable": "Scarico non riuscito: la scorta non è sufficiente o non è specificata. La fumata non è stata registrata. Riprova senza scarico o ricarica il diario.",
     "stockUpdated": "Scorta aggiornata.",
     "stockUnverified": "Aggiornamento della scorta non confermato.",
-    "stockUnchanged": "Scorte invariate."
+    "stockUnchanged": "Scorte invariate.",
+    "provenance": {
+      "product": {
+        "owned": "Dalla mia collezione",
+        "other": "Non catalogata"
+      },
+      "pipe": {
+        "owned": "Pipa della mia collezione",
+        "gift": "Pipa prestata",
+        "other": "Pipa non catalogata"
+      },
+      "tobacco": {
+        "gift": "Tabacco offerto"
+      },
+      "cigar": {
+        "gift": "Sigaro offerto"
+      }
+    }
   },
   "stockAlerts": {
     "settings": "Avvisi di scorta",
