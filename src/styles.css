@@ -765,3 +765,117 @@ button:disabled {
   margin-top: 6px;
   color: #ccbb9d;
 }
+
+.journal-product {
+  border: 1px solid #555549;
+  border-radius: 6px;
+  padding: 10px;
+}
+
+.journal-product legend {
+  color: #ccbb9d;
+}
+
+.journal-check {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  gap: 8px;
+}
+
+.journal-check input {
+  width: auto;
+  accent-color: #c2a473;
+}
+
+.journal-controls {
+  align-items: end;
+}
+
+.journal-snapshot {
+  display: grid;
+  gap: 4px;
+  overflow-wrap: anywhere;
+  margin: 8px 0;
+}
+
+.stock-alert-settings {
+  margin-block: 0 18px;
+  padding: 10px 12px;
+  border: 1px solid #48463a;
+  border-radius: 6px;
+}
+
+.stock-alert-settings summary {
+  cursor: pointer;
+  color: #ccbb9d;
+}
+
+.stock-alert-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.stock-alert-controls select {
+  display: block;
+  width: auto;
+}
+
+.stock-alert {
+  display: inline-block;
+  width: fit-content;
+  padding: 4px 8px;
+  border: 1px solid #947140;
+  border-radius: 5px;
+  background: #352a1b;
+  color: #f0c685;
+  font-size: 0.8rem;
+}
+
+.stock-alert-empty {
+  border-color: #9b655a;
+  background: #3c2825;
+  color: #f4b5a7;
+}
+
+.stock-confirmation .stock-alert {
+  margin-inline-start: 8px;
+}
+
+.journal-stock-alert:empty {
+  display: none;
+}
+
+.journal-origin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 5px 8px;
+  overflow-wrap: anywhere;
+}
+
+.journal-origin-row .name {
+  margin-block: 0;
+}
+
+.journal-pipe-origin {
+  margin-top: 7px;
+  color: #ccbb9d;
+}
+
+.journal-provenance {
+  display: inline-block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 8px;
+  border: 1px solid #756344;
+  border-radius: 5px;
+  background: #32291d;
+  color: #f0d4a0;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}

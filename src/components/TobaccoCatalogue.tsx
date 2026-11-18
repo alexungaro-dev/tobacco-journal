@@ -14,6 +14,7 @@ import {
   type TobaccoRow,
 } from "../data/tobaccos";
 import { FillIndicator } from "./RemainingLevelPicker";
+import { StockAlertBadge } from "./StockAlerts";
 import { PipePhoto } from "./PipePhoto";
 import { TobaccoForm } from "./TobaccoForm";
 
@@ -359,6 +360,7 @@ export function TobaccoCatalogue({
                 {tobacco.brand} {tobacco.name}
               </h3>
               {pendingPhoto(row) && <p>{t("tobaccos.pendingPhoto")}</p>}
+              <StockAlertBadge kind="tobacco" remainingLevel={tobacco.remainingLevel} />
               <dl className="tobacco-details">
                 {tobacco.remainingLevel && (
                   <div>

@@ -12,6 +12,7 @@ import { cloudErrorKey } from "../data/pipeMapping";
 import type { PhotoRef } from "../data/pipePhotos";
 import { downloadJson, MAX_BACKUP_BYTES } from "../data/storage";
 import { CigarForm } from "./CigarForm";
+import { StockAlertBadge } from "./StockAlerts";
 import { PipePhoto } from "./PipePhoto";
 
 function pendingPhoto(row?: CigarRow) {
@@ -334,6 +335,7 @@ export function CigarCatalogue({
                   .join(" · ")}
               </p>
               {pendingPhoto(row) && <p>{t("cigars.pendingPhoto")}</p>}
+              <StockAlertBadge kind="cigar" remaining={cigar.remaining} />
               <dl className="tobacco-details">
                 {cigar.remaining !== null && (
                   <div>

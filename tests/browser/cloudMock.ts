@@ -91,15 +91,43 @@ export function cigarRow(owner = OWNER_A, id = "c1", name = "Reserva") {
     updated_at: "2026-11-16T16:00:00.000Z",
   };
 }
+export function journalRow(owner = OWNER_A, id = "j1", name = "Private cigar") {
+  return {
+    id,
+    user_id: owner,
+    kind: "cigar",
+    pipe_id: null,
+    tobacco_id: null,
+    cigar_id: null,
+    started_at: "2026-11-18T19:00:00.000Z",
+    ended_at: null,
+    rating: null,
+    notes: null,
+    extra: { product: { source: "other", brand: "Guest", name } } as Record<
+      string,
+      unknown
+    >,
+    created_at: "2026-11-16T16:00:00.000Z",
+    updated_at: "2026-11-16T16:00:00.000Z",
+  };
+}
 export async function cloudMock(
   page: Page,
   initial: ReturnType<typeof row>[] = [],
   initialTobaccos: ReturnType<typeof tobaccoRow>[] = [],
   initialCigars: ReturnType<typeof cigarRow>[] = [],
+  initialSessions: ReturnType<typeof journalRow>[] = [],
 ) {
   const rows = structuredClone(initial);
   const tobaccos = structuredClone(initialTobaccos);
   const cigars = structuredClone(initialCigars);
+  const sessions = structuredClone(initialSessions);
+  const receipts = new Map<string, string>();
+  const stockPreferences = new Map<
+    string,
+    { stock_alerts_enabled: boolean; cigar_low_stock_threshold: number }
+  >();
+  let loseSession = false;
   const objects = new Map<string, { bytes: Buffer; type: string }>();
   const media: Record<string, any>[] = [];
   let photoFault = "";
@@ -164,8 +192,20 @@ export async function cloudMock(
     else if (url.pathname === "/auth/v1/user")
       data = authSession(owner || OWNER_A).user;
     else if (url.pathname === "/rest/v1/profiles") {
-      status = 201;
-      data = null;
+      if (method === "POST") {
+        status = 201;
+        data = null;
+      } else if (!owner || url.searchParams.get("id") !== `eq.${owner}`) {
+        status = 403;
+        data = { code: "42501" };
+      } else {
+        const current = stockPreferences.get(owner) ?? {
+          stock_alerts_enabled: true,
+          cigar_low_stock_threshold: 3,
+        };
+        data = method === "PATCH" ? { ...current, ...body } : current;
+        if (method === "PATCH") stockPreferences.set(owner, data);
+      }
     } else if (storage) {
       const root = "/storage/v1/object/journal-photos";
       const path = decodeURIComponent(url.pathname.slice(root.length + 1));
@@ -223,6 +263,136 @@ export async function cloudMock(
           data = paths.map((name) => ({ name }));
         }
       }
+    } else if (url.pathname === "/rest/v1/rpc/record_smoking_session") {
+      const { entry, stock } = body;
+      const key = owner + "/" + entry.id;
+      const prior = receipts.get(key);
+      const existing = sessions.find(
+        (row) => row.user_id === owner && row.id === entry.id,
+      );
+      const expected = JSON.stringify(body);
+      const inventory = stock?.kind === "cigar" ? cigars : tobaccos;
+      const product = inventory.find(
+        (row) =>
+          row.user_id === owner &&
+          row.id ===
+            (stock?.kind === "cigar" ? entry.cigar_id : entry.tobacco_id),
+      );
+      if (!owner) {
+        status = 403;
+        data = { code: "42501" };
+      } else if (prior && existing && prior === expected) {
+        data = [existing];
+      } else if (prior || existing) {
+        status = 409;
+        data = { code: "23505" };
+      } else if (stock && (!product || stock.revision !== product.updated_at)) {
+        status = 409;
+        data = { code: "40001" };
+      } else if (
+        stock?.kind === "cigar" &&
+        (!Number.isSafeInteger(product?.extra.remaining) ||
+          (product?.extra.remaining as number) < 1)
+      ) {
+        status = 422;
+        data = { code: "PT422" };
+      } else {
+        const timestamp = new Date(
+          Date.UTC(2026, 10, 16, 17, 0, ++version),
+        ).toISOString();
+        const session = {
+          ...entry,
+          user_id: owner,
+          created_at: timestamp,
+          updated_at: timestamp,
+        };
+        sessions.push(session);
+        receipts.set(key, expected);
+        if (
+          stock?.kind === "cigar" &&
+          product &&
+          typeof product.extra.remaining === "number" &&
+          product.extra.remaining > 0
+        ) {
+          product.extra.remaining--;
+          product.updated_at = timestamp;
+          session.extra.stockOutcome = {
+            kind: "cigar",
+            remaining: product.extra.remaining,
+          };
+        } else if (stock?.kind === "tobacco" && product) {
+          Object.assign(product.extra, stock.patch);
+          product.updated_at = timestamp;
+          session.extra.stockOutcome = {
+            kind: "tobacco",
+            remainingLevel: product.extra.remainingLevel ?? null,
+          };
+        }
+        if (loseSession) {
+          loseSession = false;
+          await route.abort("failed");
+          return;
+        }
+        data = [session];
+      }
+    } else if (url.pathname === "/rest/v1/smoking_sessions") {
+      if (
+        !owner ||
+        (method === "POST"
+          ? body.user_id !== owner
+          : url.searchParams.get("user_id") !== `eq.${owner}`)
+      ) {
+        status = 403;
+        data = { code: "42501" };
+      } else {
+        const id = url.searchParams.get("id");
+        const revision = url.searchParams.get("updated_at");
+        const selected = sessions.filter(
+          (row) =>
+            row.user_id === owner &&
+            (!id ||
+              (id.startsWith("eq.")
+                ? row.id === id.slice(3)
+                : row.id > id.slice(3))) &&
+            (!revision || revision === `eq.${row.updated_at}`),
+        );
+        if (method === "GET") {
+          data = selected.sort((a, b) => a.id.localeCompare(b.id)).slice(0, 2);
+        } else if (method === "POST") {
+          if (
+            sessions.some((row) => row.user_id === owner && row.id === body.id)
+          ) {
+            status = 409;
+            data = { code: "23505" };
+          } else {
+            const now = new Date(
+              Date.UTC(2026, 10, 16, 17, 0, ++version),
+            ).toISOString();
+            const row = { ...body, created_at: now, updated_at: now };
+            sessions.push(row);
+            status = 201;
+            data = row;
+          }
+        } else if (method === "PATCH") {
+          const now = new Date(
+            Date.UTC(2026, 10, 16, 17, 0, ++version),
+          ).toISOString();
+          selected.forEach((row) =>
+            Object.assign(row, body, { updated_at: now }),
+          );
+          data = selected[0] ?? null;
+        } else if (method === "DELETE") {
+          data = selected.map(({ id }) => ({ id }));
+          for (const row of selected) {
+            sessions.splice(sessions.indexOf(row), 1);
+            for (const item of media.filter(
+              (item) =>
+                item.user_id === owner && item.smoking_session_id === row.id,
+            ))
+              media.splice(media.indexOf(item), 1);
+          }
+        }
+      }
     } else if (url.pathname === "/rest/v1/media") {
       const filters = [...url.searchParams].filter(([, value]) =>
         value.startsWith("eq."),
@@ -232,17 +402,22 @@ export async function cloudMock(
         (method === "POST"
           ? body.user_id !== owner ||
             !body.object_path.startsWith(owner + "/") ||
-            !(body.cigar_id
-              ? cigars.some(
-                  (r) => r.user_id === owner && r.id === body.cigar_id,
+            !(body.smoking_session_id
+              ? sessions.some(
+                  (r) =>
+                    r.user_id === owner && r.id === body.smoking_session_id,
                 )
-              : body.tobacco_id
-                ? tobaccos.some(
-                    (r) => r.user_id === owner && r.id === body.tobacco_id,
+              : body.cigar_id
+                ? cigars.some(
+                    (r) => r.user_id === owner && r.id === body.cigar_id,
                   )
-                : rows.some(
-                    (r) => r.user_id === owner && r.id === body.pipe_id,
-                  ))
+                : body.tobacco_id
+                  ? tobaccos.some(
+                      (r) => r.user_id === owner && r.id === body.tobacco_id,
+                    )
+                  : rows.some(
+                      (r) => r.user_id === owner && r.id === body.pipe_id,
+                    ))
           : url.searchParams.get("user_id") !== `eq.${owner}`)
       ) {
         status = 403;
@@ -465,6 +640,11 @@ export async function cloudMock(
     rows,
     tobaccos,
     cigars,
+    sessions,
+    stockPreferences,
+    loseSessionWrite: () => {
+      loseSession = true;
+    },
     requests,
     objects,
     media,
