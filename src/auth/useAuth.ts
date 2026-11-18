@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./client";
 import {
@@ -13,12 +13,19 @@ let bootstrap: ReturnType<typeof restoreAccess> | undefined;
 export function useAuth(locale: string) {
   const localeRef = useRef(locale);
   localeRef.current = locale;
-  const [session, setSession] = useState<Session | null>(null);
+  const [session, setSessionState] = useState<Session | null>(null);
+  const sessionRef = useRef<Session | null>(null);
+  const setSession = useCallback((next: Session | null) => {
+    sessionRef.current = next;
+    setSessionState(next);
+  }, []);
   const [loading, setLoading] = useState(!!supabase);
   const [recovery, setRecovery] = useState(false);
   const [message, setMessage] = useState("");
   const [sessionError, setSessionError] = useState("");
   const [attempt, setAttempt] = useState(0);
+  const signingOut = useRef(false);
+  const [profileReady, setProfileReady] = useState<string | null>(null);
   const [profileError, setProfileError] = useState(false);
   const [profileAttempt, setProfileAttempt] = useState(0);
   useEffect(() => {
@@ -31,7 +38,7 @@ export function useAuth(locale: string) {
       data: { subscription },
     } = client.auth.onAuthStateChange((event, next) => {
       // Keep this synchronous: awaiting other Auth calls here can deadlock the SDK lock.
-      if (!active) return;
+      if (!active || (signingOut.current && next)) return;
       if (event === "INITIAL_SESSION") return; // bootstrap owns initial ordering
       setSession(next);
       if (event === "PASSWORD_RECOVERY" && next) {
@@ -75,16 +82,45 @@ export function useAuth(locale: string) {
   const userId = session?.user.id;
   useEffect(() => {
     setProfileError(false);
+    setProfileReady(null);
     if (!supabase || !userId || loading || sessionError) return;
     let active = true;
-    void ensureProfile(supabase, userId, localeRef.current).catch(() => {
-      if (active) setProfileError(true);
-    });
+    void ensureProfile(supabase, userId, localeRef.current)
+      .then(() => {
+        if (active) setProfileReady(userId);
+      })
+      .catch(() => {
+        if (active) setProfileError(true);
+      });
     return () => {
       active = false;
     };
     // Locale is used only when creating the profile; never sync UI changes to stored preferences.
   }, [userId, loading, sessionError, profileAttempt]);
+  const invalidateSession = useCallback(() => {
+    setSession(null);
+    setProfileReady(null);
+    setSessionError("auth.errors.session");
+    bootstrap = undefined;
+  }, [setSession]);
+  useEffect(() => {
+    if (!session) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const checkExpiry = () => {
+      clearTimeout(timer);
+      const current = sessionRef.current;
+      if (!current) return;
+      const remaining = (current.expires_at || 0) * 1000 - Date.now();
+      if (!Number.isFinite(remaining) || remaining <= 0) invalidateSession();
+      else timer = setTimeout(checkExpiry, Math.min(remaining, 2147483647));
+    };
+    checkExpiry();
+    window.addEventListener("focus", checkExpiry);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", checkExpiry);
+    };
+  }, [session?.user.id, session?.expires_at, invalidateSession]);
   return {
     session,
     loading,
@@ -93,6 +129,26 @@ export function useAuth(locale: string) {
     setMessage,
     sessionError,
     profileError,
+    invalidateSession,
+    profileReady: !!userId && profileReady === userId,
+    signOut: async () => {
+      signingOut.current = true;
+      // Hide and unmount all account data before waiting for the network.
+      setSession(null);
+      setProfileReady(null);
+      bootstrap = undefined;
+      try {
+        const { error } = await supabase!.auth.signOut({ scope: "local" });
+        if (error) throw error;
+        setSessionError("");
+        setMessage("auth.sessionEnded");
+      } catch (error) {
+        setSessionError("auth.errors.session");
+        throw error;
+      } finally {
+        signingOut.current = false;
+      }
+    },
     retrySession: () => {
       bootstrap = undefined;
       setAttempt((n) => n + 1);

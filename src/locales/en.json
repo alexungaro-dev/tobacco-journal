@@ -84,9 +84,9 @@
   "auth": {
     "account": "Account",
     "connected": "Signed in",
-    "localNotice": "Your pipe collection and photographs stay in this browser. Signing in or out does not transfer, replace or separate local collections by account. On a shared device, local data remains visible after logout.",
-    "unavailable": "Account access is not configured. You can continue using your local catalogue.",
-    "badConfig": "Account configuration is invalid. Contact the site administrator; your local catalogue remains available.",
+    "localNotice": "The catalogue displays only the current account’s cloud pipes. Local data is never imported or deleted automatically. Legacy photos are retained pending Phase B.",
+    "unavailable": "Account access is not configured. Local data is preserved; the catalogue requires authentication.",
+    "badConfig": "Account configuration is invalid. Contact the site administrator. Local data is preserved.",
     "loading": "Restoring access…",
     "retry": "Retry access",
     "retryProfile": "Retry profile creation",
@@ -126,5 +126,45 @@
       "mismatch": "The passwords do not match."
     },
     "resend": "Resend confirmation email"
+  },
+  "cloud": {
+    "catalogue": "Personal cloud catalogue",
+    "intro": "This account’s records are saved in the cloud.",
+    "loading": "Loading cloud pipes…",
+    "reload": "Reload from cloud",
+    "prepareLocal": "Prepare import from browser",
+    "migrationTitle": "Import into cloud",
+    "destination": "Destination account: {{email}}",
+    "plan": "Importable records: {{valid}}. Excluded records: {{rejected}}.",
+    "photoPending": "Legacy photographs in importable records: {{count}}. They will be retained in the original record data; no Storage upload is performed.",
+    "migrationHelp": "Download a backup first. Records are added without replacing different cloud records with the same ID. Browser data is never deleted. Repeating the procedure does not duplicate IDs.",
+    "backupBefore": "Download backup before transfer",
+    "transfer": "Confirm record transfer",
+    "confirmImport": "Transfer {{count}} records to account {{email}}? Existing IDs will not be overwritten. Photos stay in the original record data without Storage upload. Local data will not be deleted.",
+    "progress": "Records checked: {{count}} of {{total}}…",
+    "result": "Records verified in cloud: {{verified}}. Excluded: {{rejected}}. Conflicts or errors: {{failed}}. Not attempted: {{unattempted}}.",
+    "photosNotUploaded": "Photograph migration is NOT complete. Photos in verified records remain in the original record data; excluded or failed photos remain in the source. Keep the backup. Storage uploads will be available in Phase B.",
+    "photoReadOnly": "Legacy photos are retained unchanged. Adding, replacing and uploading photographs will be available in Phase B.",
+    "footnote": "Cloud catalogue for the current account. Export a JSON backup regularly. Original local data stays in the browser; legacy photographs have not been transferred to Storage yet.",
+    "signInRequired": "Sign in from Account to view your pipes. Existing local data is preserved and is not displayed without authentication.",
+    "preparing": "Preparing your personal profile…",
+    "profileRequired": "Complete profile preparation in Account before using the catalogue.",
+    "errors": {
+      "network": "Cloud operation not verified. Check your connection and reload before retrying: a write may already have reached the server.",
+      "session": "Your session is unavailable or expired. Sign in again.",
+      "response": "Invalid cloud response. No data from another account is displayed.",
+      "conflict": "The record was changed or removed, or the ID already exists. Reload from cloud before retrying.",
+      "references": "This record is referenced by other records and cannot be deleted.",
+      "importConflict": "The ID exists with different data or verification does not match. The cloud record was not overwritten; keep the backup for review.",
+      "source": "The file is not a readable version 1 backup (maximum 20 MB per file, 10,000 records). Download the originals if available.",
+      "local": "Unable to read the local catalogue. No data was deleted."
+    },
+    "reasons": {
+      "format": "Invalid record format.",
+      "json": "The record contains values that cannot be represented in the database.",
+      "price": "Negative prices are not supported in cloud. Correct a copy of the backup before importing.",
+      "date": "Invalid purchase date. Correct a copy of the backup before importing.",
+      "duplicate": "Repeated source ID: all occurrences are excluded to avoid ambiguity."
+    }
   }
 }

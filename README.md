@@ -1,5 +1,11 @@
 # Tobacco Journal
 
+Stato attuale — **Fase A, catalogo pipe cloud**: accesso richiesto, CRUD Supabase,
+importazione locale esplicita e dati originali conservati. Le foto legacy restano
+nei payload e nei backup; nessun upload Storage.
+Vedere [Catalogo cloud e verifiche Deploy Preview](docs/cloud-pipes.md).
+Le sezioni della Milestone 01 qui sotto descrivono il precedente flusso locale.
+
 Milestone 01: React + TypeScript + Vite, CSS Dark Heritage e italiano/inglese con react-i18next. Nessun backend o servizio esterno richiesto.
 
 ## Sviluppo e verifiche
