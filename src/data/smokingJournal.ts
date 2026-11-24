@@ -123,6 +123,20 @@ const productConfig = {
   },
 } as const;
 
+function catalogueItem(kind: ProductKind, row: Record<string, unknown>): CatalogueItem {
+  const { name, detail } = productConfig[kind];
+  return {
+    id: String(row.id),
+    brand: String(row.brand ?? ""),
+    name: String(row[name] || row.brand || row.id),
+    detail: String(row[detail] ?? ""),
+    updatedAt: String(row.updated_at),
+    createdAt: typeof row.created_at === "string" ? row.created_at : null,
+    remaining: typeof row.remaining === "number" ? row.remaining : null,
+    remainingLevel: remainingLevels.find((level) => level === row.remaining_level) ?? null,
+  };
+}
+
 function invalid(): never {
   throw new CloudError("diary.invalid");
 }
@@ -453,26 +467,7 @@ export class SmokingJournal {
           table,
           `id,user_id,brand,${name},${detail},updated_at,created_at${extra}`,
         );
-        return [
-          kind,
-          rows.map((row) => {
-            return {
-              id: String(row.id),
-              brand: String(row.brand ?? ""),
-              name: String(row[name] || row.brand || row.id),
-              detail: String(row[detail] ?? ""),
-              updatedAt: String(row.updated_at),
-              createdAt:
-                typeof row.created_at === "string" ? row.created_at : null,
-              remaining:
-                typeof row.remaining === "number" ? row.remaining : null,
-              remainingLevel:
-                remainingLevels.find(
-                  (level) => level === row.remaining_level,
-                ) ?? null,
-            };
-          }),
-        ] as const;
+        return [kind, rows.map((row) => catalogueItem(kind, row))] as const;
       }),
     );
     return Object.fromEntries(entries) as Catalogue;
@@ -496,15 +491,16 @@ export class SmokingJournal {
       Array.from(new Uint8Array(bytes), (byte) =>
         byte.toString(16).padStart(2, "0"),
       ).join("");
+    let saved;
     if (kind === "pipe") {
-      await this.auth.save({
+      saved = await this.auth.save({
         id,
         brand: product.brand,
         model: product.name,
         shape: product.detail,
       });
     } else if (kind === "tobacco") {
-      await new CloudTobaccos(this.client, this.owner, this.signal).save(
+      const outcome = await new CloudTobaccos(this.client, this.owner, this.signal).save(
         normalizeTobacco({
           id,
           brand: product.brand,
@@ -515,8 +511,9 @@ export class SmokingJournal {
         undefined,
         () => {},
       );
+      saved = outcome.row;
     } else {
-      await new CloudCigars(this.client, this.owner, this.signal).save(
+      const outcome = await new CloudCigars(this.client, this.owner, this.signal).save(
         normalizeCigar({
           id,
           brand: product.brand,
@@ -527,7 +524,10 @@ export class SmokingJournal {
         undefined,
         () => {},
       );
+      saved = outcome.row;
     }
+    catalogue[kind].push(catalogueItem(kind, { ...saved }));
+    return catalogue;
   }
 
   private async find(id: string) {

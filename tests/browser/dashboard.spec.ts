@@ -213,7 +213,7 @@ test("account preferences control dashboard alert visibility and isolated chart 
   await expect(alerts).toContainText("Low blend");
   await expect(alerts.getByRole("link", { name: /Low blend/ })).toHaveAttribute(
     "href",
-    "#tobaccos",
+    "#tobaccos/item/low",
   );
   await expect(dash(page).getByText("Foreign session")).toHaveCount(0);
   const chart = dash(page).getByRole("region", {

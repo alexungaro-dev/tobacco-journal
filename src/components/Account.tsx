@@ -5,7 +5,11 @@ import { authErrorKey } from "../auth/config";
 import { useAuthContext } from "../auth/AuthContext";
 
 type Mode = "login" | "signup" | "forgot";
-export function Account() {
+export function Account({
+  onStockSettings,
+}: {
+  onStockSettings?: () => void;
+}) {
   const { t } = useTranslation();
   const auth = useAuthContext();
   const [mode, setMode] = useState<Mode>("login");
@@ -168,6 +172,16 @@ export function Account() {
                 >
                   {t("auth.logout")}
                 </button>
+                {onStockSettings && (
+                  <button
+                    className="link"
+                    type="button"
+                    aria-controls="stock-alert-preferences"
+                    onClick={onStockSettings}
+                  >
+                    {t("stockAlerts.openSettings")}
+                  </button>
+                )}
               </div>
             )}
             {auth.profileError && (

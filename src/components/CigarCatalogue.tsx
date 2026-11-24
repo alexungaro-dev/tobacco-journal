@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BackToCatalogue, useRecordTarget } from "./RecordTarget";
 import { ListFeedback, type ReadState } from "./CloudFeedback";
 import { useInlineEditorFocus } from "./useInlineEditorFocus";
 import { supabase } from "../auth/client";
@@ -26,10 +27,12 @@ export function CigarCatalogue({
   userId,
   email,
   onSessionLost,
+  targetId,
 }: {
   userId: string;
   email: string;
   onSessionLost: () => void;
+  targetId?: string;
 }) {
   const { t, i18n } = useTranslation();
   const scope = useRef<CloudCigars | null>(null);
@@ -42,7 +45,7 @@ export function CigarCatalogue({
   const [editing, setEditing] = useState<CigarRow | null>();
   const [partiallyCreated, setPartiallyCreated] = useState<CigarRow>();
   const [busy, setBusy] = useState(true);
-  const focus = useInlineEditorFocus(editing !== undefined, busy);
+  const focus = useInlineEditorFocus(editing !== undefined, busy, targetId);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState<{ message: string; itemId?: string }>();
   const [search, setSearch] = useState("");
@@ -55,6 +58,12 @@ export function CigarCatalogue({
     errors: CigarImportItem[];
     unattempted: number;
   }>();
+
+  const [editorRoute, setEditorRoute] = useState(targetId);
+  if (editorRoute !== targetId) {
+    setEditorRoute(targetId);
+    open(undefined);
+  }
 
   async function run(action: (service: CloudCigars) => Promise<void>) {
     const service = scope.current;
@@ -217,6 +226,15 @@ export function CigarCatalogue({
         collator.compare(a.cigar.brand, b.cigar.brand)
       );
     });
+  const displayed = targetId === undefined
+    ? visible
+    : entries.filter(({ row }) => row.id === targetId);
+  const targetCard = useRecordTarget(
+    targetId,
+    readState.kind === "ready",
+    !!displayed.length,
+    focus.heading,
+  );
   const blocked = busy || editing !== undefined || readState.kind !== "ready";
 
   function reloadFromCloud() {
@@ -251,7 +269,7 @@ export function CigarCatalogue({
           {t(error)}
         </p>
       )}
-      {notice && !visible.some(({ row }) => row.id === notice.itemId) && (
+      {notice && !displayed.some(({ row }) => row.id === notice.itemId) && (
         <p role="status">{t(notice.message)}</p>
       )}
       {editing !== undefined && (
@@ -304,57 +322,69 @@ export function CigarCatalogue({
           }}
         />
       )}
-      <div className="controls">
-        <input
-          className="search"
-          type="search"
-          aria-label={t("cigars.search")}
-          placeholder={t("cigars.search")}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        {(["vitola", "country"] as const).map((key) => (
-          <select
-            className="filter"
-            key={key}
-            aria-label={t("cigars.fields." + key)}
-            value={key === "vitola" ? vitola : country}
-            onChange={(event) =>
-              (key === "vitola" ? setVitola : setCountry)(event.target.value)
-            }
-          >
-            <option value="">{t("cigars.all." + key)}</option>
-            {options(key).map((value) => (
-              <option key={value}>{value}</option>
+      {targetId !== undefined ? (
+        <BackToCatalogue href="#cigars" />
+      ) : (
+        <>
+          <div className="controls">
+            <input
+              className="search"
+              type="search"
+              aria-label={t("cigars.search")}
+              placeholder={t("cigars.search")}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            {(["vitola", "country"] as const).map((key) => (
+              <select
+                className="filter"
+                key={key}
+                aria-label={t("cigars.fields." + key)}
+                value={key === "vitola" ? vitola : country}
+                onChange={(event) =>
+                  (key === "vitola" ? setVitola : setCountry)(event.target.value)
+                }
+              >
+                <option value="">{t("cigars.all." + key)}</option>
+                {options(key).map((value) => (
+                  <option key={value}>{value}</option>
+                ))}
+              </select>
             ))}
-          </select>
-        ))}
-        <select
-          className="filter"
-          aria-label={t("cigars.sort")}
-          value={sort}
-          onChange={(event) => setSort(event.target.value)}
-        >
-          {["name", "recent", "remaining", "rating"].map((value) => (
-            <option key={value} value={value}>
-              {t("cigars.order." + value)}
-            </option>
-          ))}
-        </select>
-      </div>
-      {readState.kind === "ready" && (
-        <p className="count">
-          {t("count", { visible: visible.length, total: rows.length })}
-        </p>
+            <select
+              className="filter"
+              aria-label={t("cigars.sort")}
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+            >
+              {["name", "recent", "remaining", "rating"].map((value) => (
+                <option key={value} value={value}>
+                  {t("cigars.order." + value)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {readState.kind === "ready" && (
+            <p className="count">
+              {t("count", { visible: visible.length, total: rows.length })}
+            </p>
+          )}
+        </>
       )}
       <section className="grid" aria-busy={busy}>
-        {!busy && readState.kind === "ready" && !visible.length && (
+        {!busy && readState.kind === "ready" && !displayed.length && (
           <p className="empty">
-            {t(rows.length ? "noResults" : "cigars.empty")}
+            {t(targetId !== undefined ? "cloud.targetMissing" : rows.length ? "noResults" : "cigars.empty")}
           </p>
         )}
-        {visible.map(({ row, cigar }) => (
-          <article className="card" key={row.id}>
+        {displayed.map(({ row, cigar }) => (
+          <article
+            className="card"
+            key={row.id}
+            ref={targetId !== undefined ? targetCard : undefined}
+            tabIndex={targetId !== undefined ? -1 : undefined}
+            aria-label={targetId !== undefined ? `${cigar.brand} ${cigar.name}` : undefined}
+          >
             <div className="photo">
               <PipePhoto
                 id={row.id}

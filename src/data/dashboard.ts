@@ -11,6 +11,10 @@ export const catalogueRoute = {
   tobacco: "#tobaccos",
   cigar: "#cigars",
 } as const;
+export function catalogueItemRoute(kind: ProductKind, id: string) {
+  return `${catalogueRoute[kind]}/item/${encodeURIComponent(id)}`;
+}
+
 export const chartPeriods = ["days", "year", "all"] as const;
 export type ChartPeriod = (typeof chartPeriods)[number];
 export type SummarySession = Pick<

@@ -1,10 +1,12 @@
 import {
   createContext,
   useContext,
+  useCallback,
   useEffect,
   useRef,
   useState,
   type ReactNode,
+  type Ref,
 } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../auth/client";
@@ -45,47 +47,54 @@ export function StockAlertBadge(
 export function StockAlertPreferences({
   owner,
   children,
-  showSettings = true,
+  settingsRef,
 }: {
   owner: string;
   children: ReactNode;
-  showSettings?: boolean;
+  settingsRef: Ref<HTMLDetailsElement>;
 }) {
   const { t } = useTranslation();
   const [preferences, setPreferences] = useState<StockPreferences>();
   const [draft, setDraft] = useState<StockPreferences>();
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const scope = useRef<AbortController | null>(null);
   const writing = useRef(false);
   const dirty = useRef(false);
   const readVersion = useRef(0);
 
+  const load = useCallback(async () => {
+    const controller = scope.current;
+    if (!controller || writing.current) return;
+    const version = ++readVersion.current;
+    const isCurrent = () =>
+      scope.current === controller && version === readVersion.current;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase!
+        .from("profiles")
+        .select(fields)
+        .eq("id", owner)
+        .abortSignal(controller.signal)
+        .single();
+      if (!isCurrent()) return;
+      if (error) throw error;
+      const next = readStockPreferences(data);
+      setPreferences(next);
+      if (!dirty.current) setDraft(next);
+      setLoadFailed(false);
+    } catch {
+      if (isCurrent()) setLoadFailed(true);
+    } finally {
+      if (isCurrent()) setLoading(false);
+    }
+  }, [owner]);
+
   useEffect(() => {
     const controller = new AbortController();
     scope.current = controller;
-    async function load() {
-      if (writing.current) return;
-      const version = ++readVersion.current;
-      try {
-        const { data, error } = await supabase!
-          .from("profiles")
-          .select(fields)
-          .eq("id", owner)
-          .abortSignal(controller.signal)
-          .single();
-        if (scope.current !== controller || version !== readVersion.current)
-          return;
-        if (error) throw error;
-        const next = readStockPreferences(data);
-        setPreferences(next);
-        if (!dirty.current) setDraft(next);
-        setStatus((current) => (current === "loadError" ? "" : current));
-      } catch {
-        if (scope.current === controller && version === readVersion.current)
-          setStatus("loadError");
-      }
-    }
     void load();
     window.addEventListener("focus", load);
     return () => {
@@ -93,7 +102,7 @@ export function StockAlertPreferences({
       controller.abort();
       window.removeEventListener("focus", load);
     };
-  }, [owner]);
+  }, [load]);
 
   function change(next: StockPreferences) {
     dirty.current = true;
@@ -105,6 +114,7 @@ export function StockAlertPreferences({
     if (!controller || !draft || writing.current) return;
     writing.current = true;
     readVersion.current++;
+    setLoading(false);
     setSaving(true);
     setStatus("");
     try {
@@ -124,6 +134,7 @@ export function StockAlertPreferences({
       dirty.current = false;
       setPreferences(next);
       setDraft(next);
+      setLoadFailed(false);
       setStatus("saved");
     } catch {
       if (scope.current === controller) setStatus("saveError");
@@ -135,66 +146,77 @@ export function StockAlertPreferences({
 
   return (
     <Preferences.Provider value={preferences}>
-      {showSettings && (
-        <details className="stock-alert-settings">
-          <summary>{t("stockAlerts.settings")}</summary>
-          {draft && (
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                void save();
-              }}
+      <details id="stock-alert-preferences" className="stock-alert-settings" ref={settingsRef}>
+        <summary>{t("stockAlerts.settings")}</summary>
+        {draft && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void save();
+            }}
+          >
+            <fieldset
+              className="pipefields stock-alert-controls"
+              disabled={saving}
             >
-              <fieldset
-                className="pipefields stock-alert-controls"
-                disabled={saving}
-              >
-                <label className="journal-check">
-                  <input
-                    type="checkbox"
-                    checked={draft.enabled}
-                    onChange={(event) =>
-                      change({ ...draft, enabled: event.target.checked })
-                    }
-                  />
-                  {t("stockAlerts.enable")}
-                </label>
-                <label>
-                  {t("stockAlerts.threshold")}
-                  <select
-                    aria-label={t("stockAlerts.threshold")}
-                    value={draft.threshold}
-                    onChange={(event) =>
-                      change({
-                        ...draft,
-                        threshold: Number(event.target.value),
-                      })
-                    }
-                  >
-                    {cigarThresholds.map((value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  className="btn secondary"
-                  type="submit"
-                  disabled={!dirty.current}
+              <label className="journal-check">
+                <input
+                  type="checkbox"
+                  checked={draft.enabled}
+                  onChange={(event) =>
+                    change({ ...draft, enabled: event.target.checked })
+                  }
+                />
+                {t("stockAlerts.enable")}
+              </label>
+              <label>
+                {t("stockAlerts.threshold")}
+                <select
+                  aria-label={t("stockAlerts.threshold")}
+                  value={draft.threshold}
+                  onChange={(event) =>
+                    change({
+                      ...draft,
+                      threshold: Number(event.target.value),
+                    })
+                  }
                 >
-                  {t("stockAlerts.save")}
-                </button>
-              </fieldset>
-            </form>
-          )}
-          {status && (
-            <p role={status.endsWith("Error") ? "alert" : "status"}>
-              {t("stockAlerts." + status)}
-            </p>
-          )}
-          {!draft && !status && <p role="status">{t("stockAlerts.loading")}</p>}
-        </details>
+                  {cigarThresholds.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                className="btn secondary"
+                type="submit"
+                disabled={!dirty.current}
+              >
+                {t("stockAlerts.save")}
+              </button>
+            </fieldset>
+          </form>
+        )}
+        {status && (
+          <p role={status.endsWith("Error") ? "alert" : "status"}>
+            {t("stockAlerts." + status)}
+          </p>
+        )}
+        {!draft && loading && <p role="status">{t("stockAlerts.loading")}</p>}
+      </details>
+      {loadFailed && (
+        <div className="notice">
+          <p role="alert">{t("stockAlerts.loadError")}</p>
+          <button
+            type="button"
+            className="btn secondary"
+            disabled={loading || saving}
+            onClick={() => void load()}
+          >
+            {t("stockAlerts.retry")}
+          </button>
+        </div>
       )}
       {children}
     </Preferences.Provider>

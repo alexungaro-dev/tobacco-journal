@@ -38,22 +38,36 @@ function currentModule(hash: string): Module {
   return MODULES.includes(value as Module) ? (value as Module) : "dashboard";
 }
 
+function recordId(hash: string, prefix: string) {
+  if (!hash.startsWith(prefix)) return undefined;
+  try {
+    return decodeURIComponent(hash.slice(prefix.length));
+  } catch {
+    return "";
+  }
+}
+
 function diaryShortcut(hash: string) {
   if (hash === "#diary/new") return { create: true } as const;
-  const prefix = "#diary/session/";
-  if (hash.startsWith(prefix)) {
-    try {
-      return { sessionId: decodeURIComponent(hash.slice(prefix.length)) };
-    } catch {
-      return undefined;
-    }
-  }
+  const sessionId = recordId(hash, "#diary/session/");
+  if (sessionId !== undefined) return { sessionId };
 }
 export default function App() {
   const { t, i18n } = useTranslation();
   const auth = useAuthContext();
   const [hash, setHash] = useState(() => location.hash);
   const module = currentModule(hash);
+  const targetId = recordId(hash, `#${module}/item/`);
+  const stockSettings = useRef<HTMLDetailsElement>(null);
+  const signedIn =
+    !auth.loading && !auth.sessionError && !auth.recovery && auth.session;
+  function openStockSettings() {
+    const settings = stockSettings.current;
+    if (settings) {
+      settings.open = true;
+      settings.querySelector("summary")?.focus();
+    }
+  }
   const shortcut = useMemo(() => diaryShortcut(hash), [hash]);
   const cached = useRef<{ owner: string; catalogue: Catalogue } | undefined>(
     undefined,
@@ -116,7 +130,11 @@ export default function App() {
       </header>
       <main className="shell">
         <Suspense fallback={<p role="status">{t("auth.loading")}</p>}>
-          <Account />
+          <Account
+            onStockSettings={
+              signedIn && auth.profileReady ? openStockSettings : undefined
+            }
+          />
         </Suspense>
         <nav className="nav" aria-label={t("sections")}>
           {MODULES.map((m) => (
@@ -130,73 +148,67 @@ export default function App() {
             </button>
           ))}
         </nav>
-        {auth.session &&
-        !auth.loading &&
-        !auth.sessionError &&
-        !auth.recovery ? (
+        {signedIn ? (
           auth.profileReady ? (
-            module === "pipes" ? (
-              <CloudCatalogue
-                key={auth.session.user.id}
-                userId={auth.session.user.id}
-                email={auth.session.user.email || ""}
-                onSessionLost={auth.invalidateSession}
-              />
-            ) : (
-              <StockAlertPreferences
-                key={auth.session.user.id}
-                owner={auth.session.user.id}
-                showSettings={module !== "dashboard"}
-              >
-                {module === "dashboard" ? (
-                  <Suspense
-                    fallback={<p role="status">{t("dashboard.loading")}</p>}
-                  >
-                    <DashboardView
-                      owner={auth.session.user.id}
-                      onSessionLost={auth.invalidateSession}
-                      rememberCatalogue={rememberCatalogue}
-                    />
-                  </Suspense>
-                ) : module === "diary" ? (
-                  <Suspense
-                    fallback={<p role="status">{t("diary.working")}</p>}
-                  >
-                    <SmokingJournalView
-                      key={auth.session.user.id}
-                      userId={auth.session.user.id}
-                      email={auth.session.user.email || ""}
-                      onSessionLost={auth.invalidateSession}
-                      shortcut={shortcut}
-                      onShortcutOpened={clearShortcut}
-                      initialCatalogue={
-                        cached.current?.owner === auth.session.user.id
-                          ? cached.current.catalogue
-                          : undefined
-                      }
-                    />
-                  </Suspense>
-                ) : module === "cigars" ? (
-                  <Suspense
-                    fallback={<p role="status">{t("cigars.working")}</p>}
-                  >
-                    <CigarCatalogue
-                      key={auth.session.user.id}
-                      userId={auth.session.user.id}
-                      email={auth.session.user.email || ""}
-                      onSessionLost={auth.invalidateSession}
-                    />
-                  </Suspense>
-                ) : (
-                  <TobaccoCatalogue
-                    key={auth.session.user.id}
-                    userId={auth.session.user.id}
-                    email={auth.session.user.email || ""}
+            <StockAlertPreferences
+              key={signedIn.user.id}
+              owner={signedIn.user.id}
+              settingsRef={stockSettings}
+            >
+              {module === "pipes" ? (
+                <CloudCatalogue
+                  userId={signedIn.user.id}
+                  email={signedIn.user.email || ""}
+                  onSessionLost={auth.invalidateSession}
+                  targetId={targetId}
+                />
+              ) : module === "dashboard" ? (
+                <Suspense
+                  fallback={<p role="status">{t("dashboard.loading")}</p>}
+                >
+                  <DashboardView
+                    owner={signedIn.user.id}
+                    onSessionLost={auth.invalidateSession}
+                    rememberCatalogue={rememberCatalogue}
+                  />
+                </Suspense>
+              ) : module === "diary" ? (
+                <Suspense
+                  fallback={<p role="status">{t("diary.working")}</p>}
+                >
+                  <SmokingJournalView
+                    userId={signedIn.user.id}
+                    email={signedIn.user.email || ""}
+                    onSessionLost={auth.invalidateSession}
+                    shortcut={shortcut}
+                    onShortcutOpened={clearShortcut}
+                    initialCatalogue={
+                      cached.current?.owner === signedIn.user.id
+                        ? cached.current.catalogue
+                        : undefined
+                    }
+                  />
+                </Suspense>
+              ) : module === "cigars" ? (
+                <Suspense
+                  fallback={<p role="status">{t("cigars.working")}</p>}
+                >
+                  <CigarCatalogue
+                    targetId={targetId}
+                    userId={signedIn.user.id}
+                    email={signedIn.user.email || ""}
                     onSessionLost={auth.invalidateSession}
                   />
-                )}
-              </StockAlertPreferences>
-            )
+                </Suspense>
+              ) : (
+                <TobaccoCatalogue
+                  targetId={targetId}
+                  userId={signedIn.user.id}
+                  email={signedIn.user.email || ""}
+                  onSessionLost={auth.invalidateSession}
+                />
+              )}
+            </StockAlertPreferences>
           ) : (
             <p role="status">
               {t(

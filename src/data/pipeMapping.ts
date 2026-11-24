@@ -119,6 +119,10 @@ export function fromRow(row: PipeRow, userId: string): Pipe {
   if (!isPipe(p)) throw new CloudError("cloud.errors.response");
   return p;
 }
+export function displayPipeStatus(status: Pipe["status"]) {
+  return status || "in_use";
+}
+
 export function stableJson(value: unknown): string {
   if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
   if (value && typeof value === "object")

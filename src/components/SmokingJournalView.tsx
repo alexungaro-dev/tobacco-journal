@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ListFeedback, type ReadState } from "./CloudFeedback";
 import { useInlineEditorFocus } from "./useInlineEditorFocus";
+import { useRecordTarget } from "./RecordTarget";
 import { supabase } from "../auth/client";
 import {
   aromaTags,
@@ -27,6 +28,14 @@ import { JournalForm } from "./JournalForm";
 import { PipePhoto } from "./PipePhoto";
 
 const blankCatalogue: Catalogue = { pipe: [], tobacco: [], cigar: [] };
+const defaultFilters = {
+  kind: "",
+  product: "",
+  rating: "",
+  from: "",
+  to: "",
+  order: "desc",
+};
 const pendingPhoto = (row?: SessionRow) =>
   typeof row?.extra.pendingJournalPhoto === "string"
     ? row.extra.pendingJournalPhoto
@@ -57,7 +66,7 @@ export function SmokingJournalView({
   invalidate.current = onSessionLost;
   const lock = useRef(false);
   const input = useRef<HTMLInputElement>(null);
-  const targetCard = useRef<HTMLElement>(null);
+  const targetId = shortcut && "sessionId" in shortcut ? shortcut.sessionId : undefined;
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [catalogue, setCatalogue] = useState(blankCatalogue);
   const [readState, setReadState] = useState<ReadState>({ kind: "loading" });
@@ -70,23 +79,25 @@ export function SmokingJournalView({
     outcome?: StockOutcome;
   }>();
   const [editing, setEditing] = useState<SessionRow | null>();
-  const focus = useInlineEditorFocus(editing !== undefined, busy);
+  const focus = useInlineEditorFocus(editing !== undefined, busy, targetId);
   const [created, setCreated] = useState<SessionRow>();
   const [search, setSearch] = useState("");
-  const [filters, setFilters] = useState({
-    kind: "",
-    product: "",
-    rating: "",
-    from: "",
-    to: "",
-    order: "desc",
-  });
+  const [filters, setFilters] = useState(defaultFilters);
+  const [desktopFilters, setDesktopFilters] = useState(
+    () => window.matchMedia("(min-width: 551px)").matches,
+  );
   const [plan, setPlan] = useState<ImportEntry[]>();
   const [result, setResult] = useState<{
     done: number;
     errors: ImportEntry[];
     pending: number;
   }>();
+  const [editorRoute, setEditorRoute] = useState(targetId);
+  if (editorRoute !== targetId) {
+    setEditorRoute(targetId);
+    open(undefined);
+  }
+
   const setFilter = (key: keyof typeof filters, value: string) =>
     setFilters((state) => ({ ...state, [key]: value }));
 
@@ -149,6 +160,13 @@ export function SmokingJournalView({
       controller.abort();
     };
   }, [userId]);
+
+  useEffect(() => {
+    const viewport = window.matchMedia("(min-width: 551px)");
+    const update = () => setDesktopFilters(viewport.matches);
+    viewport.addEventListener("change", update);
+    return () => viewport.removeEventListener("change", update);
+  }, []);
 
   const read = useCallback(async (id: string, ref: PhotoRef) => {
     const service = scope.current;
@@ -225,8 +243,10 @@ export function SmokingJournalView({
     if (!window.confirm(t("diary.confirmCatalogue", { name: label(product) })))
       return;
     void run(async (service) => {
-      await service.addProduct(kind, product);
-      if (scope.current === service) setNotice({ message: "diary.catalogueSaved" });
+      const next = await service.addProduct(kind, product);
+      if (scope.current !== service) return;
+      setCatalogue(next);
+      setNotice({ message: "diary.catalogueSaved" });
     });
   }
   const searchValue = search.trim().toLocaleLowerCase(i18n.language);
@@ -285,16 +305,19 @@ export function SmokingJournalView({
     }
   }, [ready, shortcut, onShortcutOpened]);
 
-  const targetId =
-    shortcut && "sessionId" in shortcut ? shortcut.sessionId : undefined;
-  useEffect(() => {
-    if (ready && targetId !== undefined) targetCard.current?.focus();
-  }, [ready, targetId]);
   const displayed =
     targetId !== undefined
       ? entries.filter(({ row }) => row.id === targetId)
       : visible;
+  const targetCard = useRecordTarget(targetId, ready, !!displayed.length, focus.heading);
   const blocked = !ready || busy || editing !== undefined;
+  const secondaryCount = [
+    filters.product,
+    filters.rating,
+    filters.from,
+    filters.to,
+    filters.order !== defaultFilters.order,
+  ].filter(Boolean).length;
 
   function reloadFromCloud() {
     if (editing !== undefined && !window.confirm(t("cloud.discardDraft")))
@@ -504,79 +527,101 @@ export function SmokingJournalView({
         </p>
       ) : (
         <>
-          <div className="controls journal-controls">
-            <input
-              type="search"
-              className="search"
-              aria-label={t("diary.search")}
-              placeholder={t("diary.search")}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            <select
-              className="filter"
-              aria-label={t("diary.kind")}
-              value={filters.kind}
-              onChange={(e) => setFilter("kind", e.target.value)}
-            >
-              <option value="">{t("diary.allKinds")}</option>
-              <option value="pipe">{t("diary.kinds.pipe")}</option>
-              <option value="cigar">{t("diary.kinds.cigar")}</option>
-            </select>
-            <select
-              className="filter"
-              aria-label={t("diary.product")}
-              value={filters.product}
-              onChange={(e) => setFilter("product", e.target.value)}
-            >
-              <option value="">{t("diary.allProducts")}</option>
-              {[...products].map(([key, value]) => (
-                <option key={key} value={key}>
-                  {value}
-                </option>
-              ))}
-            </select>
-            <select
-              className="filter"
-              aria-label={t("diary.rating")}
-              value={filters.rating}
-              onChange={(e) => setFilter("rating", e.target.value)}
-            >
-              <option value="">{t("diary.allRatings")}</option>
-              <option value="none">{t("starRating.description.0")}</option>
-              {[1, 2, 3, 4, 5].map((value) => (
-                <option key={value} value={value}>
-                  {value}/5
-                </option>
-              ))}
-            </select>
-            <label className="field">
-              {t("diary.from")}
+          <div className="journal-filters">
+            <div className="controls journal-controls journal-primary-filters">
               <input
-                type="date"
-                value={filters.from}
-                onChange={(e) => setFilter("from", e.target.value)}
+                type="search"
+                className="search"
+                aria-label={t("diary.search")}
+                placeholder={t("diary.search")}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
-            </label>
-            <label className="field">
-              {t("diary.to")}
-              <input
-                type="date"
-                value={filters.to}
-                onChange={(e) => setFilter("to", e.target.value)}
-              />
-            </label>
-            <label className="field">
-              {t("diary.order")}
               <select
-                aria-label={t("diary.order")}
-                value={filters.order}
-                onChange={(e) => setFilter("order", e.target.value)}
+                className="filter"
+                aria-label={t("diary.kind")}
+                value={filters.kind}
+                onChange={(e) => setFilter("kind", e.target.value)}
               >
-                <option value="desc">{t("diary.newest")}</option>
-                <option value="asc">{t("diary.oldest")}</option>
+                <option value="">{t("diary.allKinds")}</option>
+                <option value="pipe">{t("diary.kinds.pipe")}</option>
+                <option value="cigar">{t("diary.kinds.cigar")}</option>
               </select>
-            </label>
+              <button
+                type="button"
+                className="link"
+                disabled={!search && !filters.kind && !secondaryCount}
+                onClick={() => {
+                  setSearch("");
+                  setFilters(defaultFilters);
+                }}
+              >
+                {t("diary.resetFilters")}
+              </button>
+            </div>
+            <details className="journal-filter-options" open={desktopFilters}>
+              <summary>
+                {secondaryCount
+                  ? t("diary.filtersActive", { count: secondaryCount })
+                  : t("diary.filters")}
+              </summary>
+              <div className="controls journal-controls journal-secondary-filters">
+                <select
+                  className="filter"
+                  aria-label={t("diary.product")}
+                  value={filters.product}
+                  onChange={(e) => setFilter("product", e.target.value)}
+                >
+                  <option value="">{t("diary.allProducts")}</option>
+                  {[...products].map(([key, value]) => (
+                    <option key={key} value={key}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  className="filter"
+                  aria-label={t("diary.rating")}
+                  value={filters.rating}
+                  onChange={(e) => setFilter("rating", e.target.value)}
+                >
+                  <option value="">{t("diary.allRatings")}</option>
+                  <option value="none">{t("starRating.description.0")}</option>
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <option key={value} value={value}>
+                      {value}/5
+                    </option>
+                  ))}
+                </select>
+                <label className="field">
+                  {t("diary.from")}
+                  <input
+                    type="date"
+                    value={filters.from}
+                    onChange={(e) => setFilter("from", e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  {t("diary.to")}
+                  <input
+                    type="date"
+                    value={filters.to}
+                    onChange={(e) => setFilter("to", e.target.value)}
+                  />
+                </label>
+                <label className="field">
+                  {t("diary.order")}
+                  <select
+                    aria-label={t("diary.order")}
+                    value={filters.order}
+                    onChange={(e) => setFilter("order", e.target.value)}
+                  >
+                    <option value="desc">{t("diary.newest")}</option>
+                    <option value="asc">{t("diary.oldest")}</option>
+                  </select>
+                </label>
+              </div>
+            </details>
           </div>
           {ready && (
             <p className="count">
@@ -603,6 +648,7 @@ export function SmokingJournalView({
             key={row.id}
             ref={row.id === targetId ? targetCard : undefined}
             tabIndex={row.id === targetId ? -1 : undefined}
+            aria-label={row.id === targetId ? label(item.product) || t("diary.historical") : undefined}
           >
             {row.extra.journalPhoto || pendingPhoto(row) ? (
               <div className="photo">

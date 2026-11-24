@@ -31,7 +31,10 @@ button {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+.intro h1:focus-visible,
+.tobacco-editor h2:focus-visible,
+.card[tabindex]:focus-visible {
   outline: 2px solid #c2a473;
   outline-offset: 2px;
 }
@@ -217,6 +220,7 @@ textarea::placeholder {
 }
 .info {
   padding: 17px;
+  overflow-wrap: anywhere;
 }
 .name {
   font:
@@ -398,7 +402,9 @@ textarea::placeholder {
     font-size: 24px;
   }
   .nav {
-    gap: 17px;
+    flex-wrap: wrap;
+    gap: 0 17px;
+    overflow: visible;
     margin-bottom: 28px;
   }
   .intro {
@@ -788,8 +794,42 @@ button:disabled {
   accent-color: #c2a473;
 }
 
+.journal-filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 .journal-controls {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.journal-filter-options summary {
+  width: fit-content;
+  padding-block: 8px;
+  color: #ccbb9d;
+  cursor: pointer;
+}
+
+.journal-secondary-filters {
   align-items: end;
+}
+
+@media (max-width: 550px) {
+  .journal-primary-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+  }
+
+  .journal-primary-filters .search {
+    grid-column: 1 / -1;
+  }
+
+  .journal-secondary-filters > .field {
+    flex: 1 0 100%;
+  }
 }
 
 .journal-snapshot {

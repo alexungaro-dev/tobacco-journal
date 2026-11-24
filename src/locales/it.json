@@ -84,7 +84,7 @@
   "auth": {
     "account": "Account",
     "connected": "Accesso effettuato",
-    "localNotice": "Il catalogo mostra soltanto le pipe cloud dell’account corrente. I dati locali non vengono importati o cancellati automaticamente. Le fotografie legacy sono conservate in attesa della Fase B.",
+    "localNotice": "Collezione e diario mostrano i dati cloud dell’account corrente. I dati locali sono conservati e si importano solo su richiesta.",
     "unavailable": "Accesso account non configurato. I dati locali rimangono conservati; il catalogo richiede l’autenticazione.",
     "badConfig": "La configurazione dell’account non è valida. Contatta l’amministratore del sito. I dati locali sono conservati.",
     "loading": "Ripristino dell’accesso…",
@@ -128,6 +128,8 @@
     "resend": "Invia di nuovo la conferma email"
   },
   "cloud": {
+    "backToCatalogue": "Torna al catalogo",
+    "targetMissing": "Il prodotto richiesto non è disponibile in questo catalogo.",
     "catalogue": "Catalogo cloud personale",
     "intro": "Le schede di questo account sono salvate nel cloud.",
     "loading": "Caricamento delle pipe cloud…",
@@ -150,7 +152,7 @@
     "result": "Schede verificate nel cloud: {{verified}}. Escluse: {{rejected}}. Conflitti o errori: {{failed}}. Non tentate: {{unattempted}}.",
     "photosNotUploaded": "Il trasferimento delle fotografie NON è completato. Puoi trasferire le immagini verificate dalla sezione Fotografie legacy. Conserva il backup originale.",
     "footnote": "Catalogo cloud dell’account corrente. Esporta regolarmente un backup JSON.",
-    "signInRequired": "Accedi dalla sezione Account per visualizzare le tue pipe. I dati locali esistenti sono conservati e non vengono mostrati senza autenticazione.",
+    "signInRequired": "Accedi dalla sezione Account per visualizzare il tuo catalogo. I dati locali esistenti sono conservati.",
     "preparing": "Preparazione del profilo personale…",
     "profileRequired": "Completa la preparazione del profilo dalla sezione Account prima di usare il catalogo.",
     "errors": {
@@ -331,6 +333,10 @@
     }
   },
   "diary": {
+    "filters": "Altri filtri",
+    "filtersActive_one": "Altri filtri ({{count}} attivo)",
+    "filtersActive_other": "Altri filtri ({{count}} attivi)",
+    "resetFilters": "Azzera filtri",
     "signInRequired": "Accedi dalla sezione Account per aprire il tuo diario.",
     "title": "Diario delle fumate",
     "intro": "Registra una fumata e completa i dettagli quando vuoi.",
@@ -464,6 +470,8 @@
     }
   },
   "stockAlerts": {
+    "openSettings": "Impostazioni avvisi di scorta",
+    "retry": "Riprova preferenze di scorta",
     "settings": "Avvisi di scorta",
     "enable": "Mostra gli avvisi di scorta",
     "threshold": "Soglia sigari (pezzi)",
