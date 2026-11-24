@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   cloudMock,
   signIn,
+  signOut,
   row,
   LEGACY,
   PHOTO,
@@ -20,7 +21,7 @@ test("signed-out catalogue hides local and cloud personal data; explicit import 
     original,
   );
   await page.goto("/#pipes");
-  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bentornato" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
   );
@@ -42,7 +43,7 @@ test("signed-out catalogue hides local and cloud personal data; explicit import 
   await expect(
     page.getByRole("region", { name: "Importazione nel cloud" }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
   );
@@ -269,11 +270,7 @@ test("account isolation and pagination: logout clears open forms and switching u
   const other = await page.context().newPage();
   await cloudMock(other);
   await other.goto("/#pipes");
-  await other.locator(".account summary").click();
-  await expect(
-    other.getByRole("button", { name: "Esci", exact: true }),
-  ).toBeVisible();
-  await other.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(other);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
@@ -305,9 +302,9 @@ test("a late cloud response cannot repopulate the UI after logout", async ({
   await page.goto("/#pipes");
   await signIn(page);
   await expect(page.getByText("Caricamento delle pipe cloud…")).toBeVisible();
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   release();
-  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bentornato" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
   );
@@ -326,12 +323,9 @@ test("network errors and lost write responses never report false success or dupl
   await page.goto("/#pipes");
   await signIn(page);
   await expect(page.getByRole("alert")).toContainText(
-    "Operazione cloud non verificata",
+    "Impossibile caricare i dati dal cloud",
   );
-  await page
-    .getByRole("button", { name: "Ricarica dal cloud" })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "Riprova", exact: true }).click();
   await expect(page.getByText("La tua collezione inizia qui")).toBeVisible();
   await page.getByRole("button", { name: "+ Aggiungi pipa" }).click();
   await page.getByLabel("Marca *").fill("Network");
@@ -379,7 +373,7 @@ test("expired API session hides data and an edit conflict cannot overwrite a new
     .getByRole("button", { name: "Ricarica dal cloud" })
     .first()
     .click();
-  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bentornato" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
   );
@@ -397,11 +391,11 @@ test("logout hides the account catalogue before the logout network request compl
     page.getByRole("heading", { name: "Peterson 999" }),
   ).toBeVisible();
   const release = api.pauseNextLogout();
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
   );
-  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bentornato" })).toBeVisible();
   release();
   await expect(page.getByLabel("Email", { exact: true })).toBeEnabled();
 });
@@ -493,7 +487,7 @@ test("token expiry hides cached cloud data even when Auth refresh cannot reach t
   ).toBeVisible();
   api.blockRefresh();
   await page.clock.fastForward(3601 * 1000);
-  await expect(page.getByText(/Accedi dalla sezione Account/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bentornato" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Peterson 999" })).toHaveCount(
     0,
   );

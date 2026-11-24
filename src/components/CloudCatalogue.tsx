@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BackToCatalogue, useRecordTarget } from "./RecordTarget";
+import { ListFeedback } from "./CloudFeedback";
 import { supabase } from "../auth/client";
 import { useCloudPipes } from "../data/useCloudPipes";
 import {
@@ -8,7 +10,7 @@ import {
   MAX_BACKUP_BYTES,
   PIPES_KEY,
 } from "../data/storage";
-import { inspectImport, type ImportPlan } from "../data/pipeMapping";
+import { displayPipeStatus, inspectImport, type ImportPlan } from "../data/pipeMapping";
 import type { ImportResult } from "../data/cloudPipes";
 import type { Pipe } from "../types";
 import { PipeCard } from "./PipeCard";
@@ -18,10 +20,12 @@ export function CloudCatalogue({
   userId,
   email,
   onSessionLost,
+  targetId,
 }: {
   userId: string;
   email: string;
   onSessionLost: () => void;
+  targetId?: string;
 }) {
   const { t, i18n } = useTranslation();
   const cloud = useCloudPipes(supabase!, userId, onSessionLost);
@@ -48,6 +52,12 @@ export function CloudCatalogue({
     };
   }, []);
   const close = useCallback(() => setEditing(undefined), []);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const [editorRoute, setEditorRoute] = useState(targetId);
+  if (editorRoute !== targetId) {
+    setEditorRoute(targetId);
+    setEditing(undefined);
+  }
   const privatePhoto = (id: string) => ({
     ...cloud.photo(id),
     read: cloud.readPhoto,
@@ -67,12 +77,18 @@ export function CloudCatalogue({
   const query = search.toLocaleLowerCase(i18n.language);
   const filtered = cloud.pipes.filter(
     (p) =>
-      (!status || p.status === status) &&
+      (!status || displayPipeStatus(p.status) === status) &&
       [p.brand, p.model, p.shape, p.material, p.notes]
         .join(" ")
         .toLocaleLowerCase(i18n.language)
         .includes(query),
   );
+  const displayed = targetId === undefined
+    ? filtered
+    : cloud.pipes.filter((pipe) => pipe.id === targetId);
+  const ready = !cloud.loading && !cloud.readError;
+  const targetCard = useRecordTarget(targetId, ready, !!displayed.length, heading);
+
   function prepare(text: string, source: "local" | "backup") {
     setPlan(null);
     setResult(null);
@@ -86,7 +102,7 @@ export function CloudCatalogue({
     }
   }
   async function transfer() {
-    if (!plan || disabled) return;
+    if (!plan || disabled || cloud.readError) return;
     const count = plan.items.filter((i) => i.pipe).length;
     if (!window.confirm(t("cloud.confirmImport", { count, email }))) return;
     setResult(null);
@@ -109,18 +125,29 @@ export function CloudCatalogue({
       <section className="intro">
         <div>
           <div className="eyebrow">{t("cloud.catalogue")}</div>
-          <h1>{t("title")}</h1>
+          <h1 ref={heading} tabIndex={-1}>{t("title")}</h1>
           <p>{t("cloud.intro")}</p>
         </div>
         <button
           className="btn"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={() => setEditing(null)}
         >
           {t("add")}
         </button>
       </section>
-      {cloud.loading && <p role="status">{t("cloud.loading")}</p>}
+      <ListFeedback
+        state={
+          cloud.loading
+            ? { kind: "loading" }
+            : cloud.readError
+              ? { kind: "error", message: cloud.readError }
+              : { kind: "ready" }
+        }
+        loading="cloud.loading"
+        onRetry={cloud.reload}
+        busy={disabled}
+      />
       {((cloud.error && editing === undefined) || notice) && (
         <div className="notice" role="alert">
           {cloud.error && <p>{t(cloud.error)}</p>}
@@ -141,57 +168,68 @@ export function CloudCatalogue({
         <p role="status">{t(cloud.warning)}</p>
       )}
       {message && <p role="status">{t(message)}</p>}
-      <div className="controls">
-        <input
-          className="search"
-          type="search"
-          aria-label={t("search")}
-          placeholder={t("search")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="filter"
-          aria-label={t("fields.status")}
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
-          <option value="">{t("allStatuses")}</option>
-          {["in_use", "stored", "archived"].map((s) => (
-            <option key={s} value={s}>
-              {t(`statuses.${s}`)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div className="count">
-        {t("count", { visible: filtered.length, total: cloud.pipes.length })}
-      </div>
+      {targetId !== undefined ? (
+        <BackToCatalogue href="#pipes" />
+      ) : (
+        <>
+          <div className="controls">
+            <input
+              className="search"
+              type="search"
+              aria-label={t("search")}
+              placeholder={t("search")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+            <select
+              className="filter"
+              aria-label={t("fields.status")}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">{t("allStatuses")}</option>
+              {["in_use", "stored", "archived"].map((s) => (
+                <option key={s} value={s}>
+                  {t(`statuses.${s}`)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {!cloud.loading && !cloud.readError && (
+            <div className="count">
+              {t("count", { visible: filtered.length, total: cloud.pipes.length })}
+            </div>
+          )}
+        </>
+      )}
       <section className="grid" aria-live="polite" aria-busy={cloud.loading}>
-        {filtered.map((p) => (
+        {displayed.map((p) => (
           <PipeCard
             key={p.id}
             pipe={p}
+            targetRef={targetId !== undefined ? targetCard : undefined}
             photo={privatePhoto(p.id)}
             onEdit={() => {
               if (!disabled) setEditing(p);
             }}
           />
         ))}
-        {!cloud.loading && !cloud.error && !filtered.length && (
-          <div className="empty">
-            <strong>
-              {t(cloud.pipes.length ? "noResults" : "emptyTitle")}
-            </strong>
-            {t(cloud.pipes.length ? "tryFilters" : "emptyText")}
-          </div>
+        {ready && !cloud.error && !displayed.length && (
+          targetId !== undefined ? (
+            <p className="empty">{t("cloud.targetMissing")}</p>
+          ) : (
+            <div className="empty">
+              <strong>{t(cloud.pipes.length ? "noResults" : "emptyTitle")}</strong>
+              {t(cloud.pipes.length ? "tryFilters" : "emptyText")}
+            </div>
+          )
         )}
       </section>
       <p className="footnote">{t("cloud.footnote")}</p>
       <div className="cloudtools">
         <button
           className="btn secondary"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={async () => {
             setExportFailed(false);
             const backup = await cloud.exportBackup();
@@ -211,7 +249,7 @@ export function CloudCatalogue({
         </button>
         <button
           className="btn secondary"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={() => {
             try {
               prepare(localStorage.getItem(PIPES_KEY) || "[]", "local");
@@ -226,7 +264,7 @@ export function CloudCatalogue({
         </button>
         <button
           className="btn secondary"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={() => file.current?.click()}
         >
           {t("import")}
@@ -348,7 +386,7 @@ export function CloudCatalogue({
             <button
               className="btn"
               disabled={
-                disabled || !!cloud.error || !plan.items.some((i) => i.pipe)
+                disabled || !!cloud.error || !!cloud.readError || !plan.items.some((i) => i.pipe)
               }
               onClick={() => void transfer()}
             >

@@ -9,6 +9,7 @@ import {
   PHOTO,
   row,
   signIn,
+  signOut,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -82,7 +83,7 @@ test("dashboard is the default and links correct counts, recent details and the 
   });
   await page.goto("/");
   await expect(
-    page.getByText("Accedi per visualizzare la tua dashboard personale."),
+    page.getByRole("heading", { name: "Bentornato" }),
   ).toBeVisible();
   expect(
     api.requests.some((request) =>
@@ -109,6 +110,7 @@ test("dashboard is the default and links correct counts, recent details and the 
   await expect(sessions.nth(1)).toContainText("Pipa prestata");
   await expect(sessions.nth(2)).toContainText("Terza");
   await expect(latest(page)).toContainText("Example Nuovo");
+  await latest(page).locator(".photo").scrollIntoViewIfNeeded();
   await expect(latest(page).locator("img")).toHaveAttribute("src", /^blob:/);
   expect(
     api.requests.filter(({ path, method }) => method === "GET" && path.startsWith("/storage/")).length,
@@ -213,7 +215,7 @@ test("account preferences control dashboard alert visibility and isolated chart 
   await expect(alerts).toContainText("Low blend");
   await expect(alerts.getByRole("link", { name: /Low blend/ })).toHaveAttribute(
     "href",
-    "#tobaccos",
+    "#tobaccos/item/low",
   );
   await expect(dash(page).getByText("Foreign session")).toHaveCount(0);
   const chart = dash(page).getByRole("region", {
@@ -230,7 +232,7 @@ test("account preferences control dashboard alert visibility and isolated chart 
   await expect(
     chart.getByText("Nessuna fumata in questo periodo."),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await signIn(page, "other@example.test");
   await expect(recent(page)).toContainText("Foreign session");
   await expect(recent(page).getByText("Guest Current")).toHaveCount(0);

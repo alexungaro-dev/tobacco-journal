@@ -9,6 +9,7 @@ import {
   PHOTO,
   row,
   signIn,
+  signOut,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -279,7 +280,7 @@ test("logout during cigar upload prevents late attachment or cross-account reads
   );
   await save(page).click();
   const request = await pending;
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await expect(editor(page)).toHaveCount(0);
   await signIn(page, "other@example.test");
   release();

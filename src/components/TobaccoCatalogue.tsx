@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { BackToCatalogue, useRecordTarget } from "./RecordTarget";
+import { ListFeedback, type ReadState } from "./CloudFeedback";
+import { useInlineEditorFocus } from "./useInlineEditorFocus";
 import { supabase } from "../auth/client";
 import { cloudErrorKey } from "../data/pipeMapping";
 import type { PhotoRef } from "../data/pipePhotos";
@@ -27,10 +30,12 @@ export function TobaccoCatalogue({
   userId,
   email,
   onSessionLost,
+  targetId,
 }: {
   userId: string;
   email: string;
   onSessionLost: () => void;
+  targetId?: string;
 }) {
   const { t, i18n } = useTranslation();
   const scope = useRef<CloudTobaccos | null>(null);
@@ -38,10 +43,12 @@ export function TobaccoCatalogue({
   invalidate.current = onSessionLost;
   const lock = useRef(false);
   const [rows, setRows] = useState<TobaccoRow[]>([]);
+  const [readState, setReadState] = useState<ReadState>({ kind: "loading" });
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<{ message: string; itemId?: string }>();
   const [editing, setEditing] = useState<TobaccoRow | null>();
+  const focus = useInlineEditorFocus(editing !== undefined, busy, targetId);
   const [partial, setPartial] = useState<TobaccoRow>();
   const [search, setSearch] = useState("");
   const [blend, setBlend] = useState("");
@@ -56,6 +63,12 @@ export function TobaccoCatalogue({
   }>();
   const file = useRef<HTMLInputElement>(null);
 
+  const [editorRoute, setEditorRoute] = useState(targetId);
+  if (editorRoute !== targetId) {
+    setEditorRoute(targetId);
+    open(undefined);
+  }
+
   function report(failure: unknown) {
     const key = cloudErrorKey(failure);
     if (key === "cloud.errors.session") invalidate.current();
@@ -68,7 +81,7 @@ export function TobaccoCatalogue({
     lock.current = true;
     setBusy(true);
     setError("");
-    setNotice("");
+    setNotice(undefined);
     try {
       await action(service);
     } catch (failure) {
@@ -82,8 +95,18 @@ export function TobaccoCatalogue({
   }
 
   async function refresh(service: CloudTobaccos) {
-    const next = await service.list();
-    if (scope.current === service) setRows(next);
+    setReadState({ kind: "loading" });
+    try {
+      const next = await service.list();
+      if (scope.current !== service) return;
+      setRows(next);
+      setReadState({ kind: "ready" });
+    } catch (failure) {
+      if (scope.current !== service) return;
+      const key = cloudErrorKey(failure);
+      if (key === "cloud.errors.session") invalidate.current();
+      else setReadState({ kind: "error", message: "cloud.readError" });
+    }
   }
 
   useEffect(() => {
@@ -118,7 +141,7 @@ export function TobaccoCatalogue({
       return { ref: undefined, damaged: true, read };
     }
   }
-  function open(row: TobaccoRow | null) {
+  function open(row: TobaccoRow | null | undefined) {
     setPartial(undefined);
     setEditing(row);
     setError("");
@@ -216,35 +239,66 @@ export function TobaccoCatalogue({
       );
     });
   const number = new Intl.NumberFormat(i18n.language);
+  const displayed = targetId === undefined
+    ? visible
+    : values.filter(({ row }) => row.id === targetId);
+  const targetCard = useRecordTarget(
+    targetId,
+    readState.kind === "ready",
+    !!displayed.length,
+    focus.heading,
+  );
+  const blocked = busy || editing !== undefined || readState.kind !== "ready";
+  function reloadFromCloud() {
+    if (editing !== undefined && !window.confirm(t("cloud.discardDraft")))
+      return;
+    setEditing(undefined);
+    setPartial(undefined);
+    setBackedUp(false);
+    void run(refresh);
+  }
+
   return (
     <>
       <section className="intro">
         <div>
-          <h1>{t("tobaccos.title")}</h1>
+          <h1 ref={focus.heading} tabIndex={-1}>
+            {t("tobaccos.title")}
+          </h1>
           <p>{t("tobaccos.intro")}</p>
         </div>
         <button
           className="btn"
-          disabled={busy || editing !== undefined}
-          onClick={() => open(null)}
+          disabled={blocked}
+          onClick={(event) => {
+            focus.trigger.current = event.currentTarget;
+            open(null);
+          }}
         >
           {t("tobaccos.add")}
         </button>
       </section>
-      {busy && <p role="status">{t("tobaccos.working")}</p>}
-      {error && (
+      <ListFeedback state={readState} onRetry={reloadFromCloud} busy={busy} />
+      {busy && editing === undefined && readState.kind !== "loading" && (
+        <p role="status">{t("tobaccos.working")}</p>
+      )}
+      {error && editing === undefined && (
         <p className="notice" role="alert">
           {t(error)}
         </p>
       )}
-      {notice && <p role="status">{t(notice)}</p>}
-      {partial && <p role="status">{t("tobaccos.partial")}</p>}
+      {notice && !displayed.some(({ row }) => row.id === notice.itemId) && (
+        <p role="status">{t(notice.message)}</p>
+      )}
       {editing !== undefined && (
         <TobaccoForm
           initial={editing ? fromTobaccoRow(editing) : undefined}
           photo={photo(editing ?? undefined)}
           pending={pendingPhoto(editing ?? undefined)}
           busy={busy}
+          headingRef={focus.editorHeading}
+          saveError={error}
+          saveStatus={partial ? "tobaccos.partial" : undefined}
           cancel={() => {
             setEditing(undefined);
             setPartial(undefined);
@@ -266,7 +320,10 @@ export function TobaccoCatalogue({
               keep(outcome.row);
               setEditing(undefined);
               setPartial(undefined);
-              setNotice(outcome.cleanup ? "photos.cleanup" : "tobaccos.saved");
+              setNotice({
+                message: outcome.cleanup ? "photos.cleanup" : "tobaccos.saved",
+                itemId: editing?.id,
+              });
             })
           }
           remove={() => {
@@ -285,70 +342,91 @@ export function TobaccoCatalogue({
               );
               setBackedUp(false);
               setEditing(undefined);
-              setNotice(cleanup ? "photos.cleanup" : "tobaccos.deleted");
+              setNotice({ message: cleanup ? "photos.cleanup" : "tobaccos.deleted" });
             });
           }}
         />
       )}
-      <div className="controls">
-        <input
-          className="search"
-          type="search"
-          aria-label={t("tobaccos.search")}
-          placeholder={t("tobaccos.search")}
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
-        <select
-          className="filter"
-          aria-label={t("tobaccos.fields.blend")}
-          value={blend}
-          onChange={(event) => setBlend(event.target.value)}
-        >
-          <option value="">{t("tobaccos.allBlends")}</option>
-          {blends.map((value) => (
-            <option key={value}>{value}</option>
-          ))}
-        </select>
-        <select
-          className="filter"
-          aria-label={t("tobaccos.fields.status")}
-          value={status}
-          onChange={(event) => setStatus(event.target.value)}
-        >
-          <option value="">{t("allStatuses")}</option>
-          {tobaccoStates.map((value) => (
-            <option key={value} value={value}>
-              {t("tobaccos.states." + value)}
-            </option>
-          ))}
-        </select>
-        <select
-          className="filter"
-          aria-label={t("tobaccos.sort")}
-          value={sort}
-          onChange={(event) => setSort(event.target.value)}
-        >
-          {["name", "recent", "remaining"].map((value) => (
-            <option key={value} value={value}>
-              {t("tobaccos.order." + value)}
-            </option>
-          ))}
-        </select>
-      </div>
-      <p className="count">
-        {t("count", { visible: visible.length, total: rows.length })}
-      </p>
+      {targetId !== undefined ? (
+        <BackToCatalogue href="#tobaccos" />
+      ) : (
+        <>
+          <div className="controls">
+            <input
+              className="search"
+              type="search"
+              aria-label={t("tobaccos.search")}
+              placeholder={t("tobaccos.search")}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            <select
+              className="filter"
+              aria-label={t("tobaccos.fields.blend")}
+              value={blend}
+              onChange={(event) => setBlend(event.target.value)}
+            >
+              <option value="">{t("tobaccos.allBlends")}</option>
+              {blends.map((value) => (
+                <option key={value}>{value}</option>
+              ))}
+            </select>
+            <select
+              className="filter"
+              aria-label={t("tobaccos.fields.status")}
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <option value="">{t("allStatuses")}</option>
+              {tobaccoStates.map((value) => (
+                <option key={value} value={value}>
+                  {t("tobaccos.states." + value)}
+                </option>
+              ))}
+            </select>
+            <select
+              className="filter"
+              aria-label={t("tobaccos.sort")}
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+            >
+              {["name", "recent", "remaining"].map((value) => (
+                <option key={value} value={value}>
+                  {t("tobaccos.order." + value)}
+                </option>
+              ))}
+            </select>
+          </div>
+          {readState.kind === "ready" && (
+            <p className="count">
+              {t("count", { visible: visible.length, total: rows.length })}
+            </p>
+          )}
+        </>
+      )}
       <section className="grid" aria-busy={busy}>
-        {!busy && !visible.length && (
+        {!busy && readState.kind === "ready" && !displayed.length && (
           <p className="empty">
-            {t(rows.length ? "noResults" : "tobaccos.empty")}
+            {t(
+              targetId !== undefined
+                ? "cloud.targetMissing"
+                : rows.length
+                  ? "noResults"
+                  : "tobaccos.empty",
+            )}
           </p>
         )}
-        {visible.map(({ row, tobacco }) => (
-          <article className="card" key={row.id}>
+        {displayed.map(({ row, tobacco }) => (
+          <article
+            className="card"
+            key={row.id}
+            ref={targetId !== undefined ? targetCard : undefined}
+            tabIndex={targetId !== undefined ? -1 : undefined}
+            aria-label={targetId !== undefined ? `${tobacco.brand} ${tobacco.name}` : undefined}
+          >
             <div className="photo">
               <PipePhoto
+                defer
                 id={row.id}
                 photo={photo(row)}
                 legacy={pendingPhoto(row)}
@@ -425,12 +503,18 @@ export function TobaccoCatalogue({
                 )}
                 <button
                   className="link"
-                  disabled={busy || editing !== undefined}
-                  onClick={() => open(row)}
+                  disabled={blocked}
+                  onClick={(event) => {
+                    focus.trigger.current = event.currentTarget;
+                    open(row);
+                  }}
                 >
                   {t("edit")}
                 </button>
               </div>
+              {notice?.itemId === row.id && (
+                <p role="status">{t(notice.message)}</p>
+              )}
             </div>
           </article>
         ))}
@@ -439,25 +523,20 @@ export function TobaccoCatalogue({
         <button
           className="btn secondary"
           disabled={busy}
-          onClick={() => {
-            setEditing(undefined);
-            setPartial(undefined);
-            setBackedUp(false);
-            void run(refresh);
-          }}
+          onClick={reloadFromCloud}
         >
           {t("cloud.reload")}
         </button>
         <button
           className="btn secondary"
-          disabled={busy || editing !== undefined}
+          disabled={blocked}
           onClick={() => exportJson(false)}
         >
           {t("export")}
         </button>
         <button
           className="btn secondary"
-          disabled={busy || editing !== undefined}
+          disabled={blocked}
           onClick={() => file.current?.click()}
         >
           {t("import")}
@@ -501,7 +580,7 @@ export function TobaccoCatalogue({
           <div className="cloudtools">
             <button
               className="btn secondary"
-              disabled={busy || editing !== undefined}
+              disabled={blocked}
               onClick={() => exportJson(true)}
             >
               {t("tobaccos.backupFirst")}

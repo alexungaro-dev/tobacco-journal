@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PhotoRef } from "../data/pipePhotos";
 
@@ -25,20 +25,42 @@ export function PipePhoto({
   photo,
   alt,
   editor = false,
+  defer = false,
 }: {
   id: string;
   legacy?: string | null;
   photo: PrivatePhoto;
   alt: string;
   editor?: boolean;
+  defer?: boolean;
 }) {
   const { t } = useTranslation();
   const ref = photo.ref;
   const path = ref?.path;
   const { read } = photo;
+  const placeholder = useRef<HTMLSpanElement>(null);
+  const [visiblePath, setVisiblePath] = useState<string>();
+  const shouldRead = !defer || editor || visiblePath === path;
   const [loaded, setLoaded] = useState<{ path: string; url?: string }>();
   useEffect(() => {
-    if (!ref || !path) return;
+    const target = placeholder.current;
+    if (shouldRead || !path || !target) return;
+    if (typeof IntersectionObserver !== "function") {
+      setVisiblePath(path);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry?.isIntersecting) {
+        observer.disconnect();
+        setVisiblePath(path);
+      }
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [path, shouldRead]);
+
+  useEffect(() => {
+    if (!shouldRead || !ref || !path) return;
     let active = true;
     let url: string | undefined;
     void read(id, ref)
@@ -54,7 +76,7 @@ export function PipePhoto({
       active = false;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [id, path, read, ref]);
+  }, [id, path, read, ref, shouldRead]);
 
   const current = loaded?.path === path ? loaded : undefined;
   const supported =
@@ -71,10 +93,11 @@ export function PipePhoto({
           className={editor ? "preview" : undefined}
           src={source}
           alt={alt}
+          loading={defer && !editor ? "lazy" : undefined}
         />
       ) : (
         !editor && (
-          <span className="silhouette" aria-hidden="true">
+          <span className="silhouette" ref={placeholder} aria-hidden="true">
             ♧
           </span>
         )

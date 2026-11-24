@@ -24,6 +24,7 @@ export function useCloudPipes(
 ) {
   const [rows, setRows] = useState<PipeRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [readError, setReadError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [warning, setWarning] = useState("");
@@ -43,11 +44,14 @@ export function useCloudPipes(
     setLoading(true);
     setRows([]);
     setError("");
+    setReadError("");
     try {
       const next = await current.service.list();
       if (scope.current === current) setRows(next);
     } catch (e) {
-      if (scope.current === current) report(e);
+      if (scope.current !== current) return;
+      if (cloudErrorKey(e) === "cloud.errors.session") sessionLost.current();
+      else setReadError("cloud.readError");
     } finally {
       if (scope.current === current) setLoading(false);
     }
@@ -142,6 +146,7 @@ export function useCloudPipes(
   return {
     pipes: rows.map((row) => fromRow(row, userId)),
     loading,
+    readError,
     busy,
     error,
     warning,

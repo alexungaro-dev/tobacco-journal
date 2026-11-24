@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../auth/client";
 import {
   catalogueRoute,
+  catalogueItemRoute,
   collectionSummary,
   productKinds,
   recentSessions,
@@ -73,7 +74,7 @@ export function DashboardView({
         if (signal.aborted) return;
         const key = cloudErrorKey(failure);
         if (key === "cloud.errors.session") invalidate.current();
-        else setError(key);
+        else setError(key === "cloud.errors.network" ? "cloud.readError" : key);
       }
     })();
     return () => controller.abort();
@@ -123,7 +124,7 @@ export function DashboardView({
               setAttempt((value) => value + 1);
             }}
           >
-            {t("cloud.reload")}
+            {t("cloud.retry")}
           </button>
         </div>
       )}
@@ -218,7 +219,7 @@ export function DashboardView({
                 <ul className="dashboard-list">
                   {tobaccoAlerts.map((item) => (
                     <li key={"tobacco/" + item.id}>
-                      <a className="dashboard-item" href="#tobaccos">
+                      <a className="dashboard-item" href={catalogueItemRoute("tobacco", item.id)}>
                         <span className="dashboard-item-line">
                           <strong>
                             {item.brand} {item.name}
@@ -236,7 +237,7 @@ export function DashboardView({
                   ))}
                   {cigarAlerts.map((item) => (
                     <li key={"cigar/" + item.id}>
-                      <a className="dashboard-item" href="#cigars">
+                      <a className="dashboard-item" href={catalogueItemRoute("cigar", item.id)}>
                         <span className="dashboard-item-line">
                           <strong>
                             {item.brand} {item.name}
@@ -261,13 +262,14 @@ export function DashboardView({
                 <h2 id="dashboard-latest">{t("dashboard.latest")}</h2>
                 <a
                   className="dashboard-item dashboard-latest"
-                  href={catalogueRoute[latest.kind]}
+                  href={catalogueItemRoute(latest.kind, latest.item.id)}
                 >
                   {photo &&
                     (photo.ref || photo.legacy) &&
                     photo.ref !== null && (
                       <div className="photo">
                         <PipePhoto
+                          defer
                           id={latest.item.id}
                           alt={t("photoAlt", { name: latest.item.name })}
                           legacy={photo.legacy}

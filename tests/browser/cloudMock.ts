@@ -704,13 +704,24 @@ export async function cloudMock(
   };
 }
 export async function signIn(page: Page, email = "reader@example.test") {
-  const account = page.locator(".account");
-  if (!(await account.evaluate((e) => (e as HTMLDetailsElement).open)))
-    await account.locator("summary").click();
   await page.getByLabel("Email", { exact: true }).fill(email);
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("A-long-synthetic-password-123");
+  await page.getByLabel("Password", { exact: true }).fill("A-long-synthetic-password-123");
   await page.getByRole("button", { name: "Accedi", exact: true }).click();
-  await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Menu account" })).toBeVisible();
+}
+
+export async function openAccountMenu(page: Page) {
+  const trigger = page.getByRole("button", { name: "Menu account" });
+  await expect(trigger).toBeVisible();
+  if (await trigger.getAttribute("aria-expanded") === "false") await trigger.click();
+}
+
+export async function signOut(page: Page) {
+  await openAccountMenu(page);
+  await page.getByRole("button", { name: "Esci", exact: true }).click();
+}
+
+export async function openPreferences(page: Page) {
+  await openAccountMenu(page);
+  await page.getByRole("button", { name: "Preferenze", exact: true }).click();
 }

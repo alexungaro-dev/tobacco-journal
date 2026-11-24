@@ -1,13 +1,17 @@
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
 import { PipePhoto, type PrivatePhoto } from "./PipePhoto";
 import type { Pipe } from "../types";
+import { displayPipeStatus } from "../data/pipeMapping";
 export function PipeCard({
   pipe: p,
   onEdit,
   photo,
+  targetRef,
 }: {
   pipe: Pipe;
   photo: PrivatePhoto;
+  targetRef?: Ref<HTMLElement>;
   onEdit: () => void;
 }) {
   const { t, i18n } = useTranslation();
@@ -17,9 +21,15 @@ export function PipeCard({
       : null;
   const validDate = date && !Number.isNaN(date.getTime());
   return (
-    <article className="card">
+    <article
+      className="card"
+      ref={targetRef}
+      tabIndex={targetRef ? -1 : undefined}
+      aria-label={targetRef ? `${p.brand} ${p.model}` : undefined}
+    >
       <div className="photo">
         <PipePhoto
+          defer
           id={p.id}
           legacy={p.photo}
           photo={photo}
@@ -57,7 +67,7 @@ export function PipeCard({
         )}
         <div className="cardbottom">
           <span className="pill">
-            {t(`statuses.${p.status || "in_use"}`, {
+            {t(`statuses.${displayPipeStatus(p.status)}`, {
               defaultValue: t("unknownStatus", { value: p.status }),
             })}
           </span>

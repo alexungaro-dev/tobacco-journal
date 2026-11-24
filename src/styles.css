@@ -31,7 +31,10 @@ button {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+.intro h1:focus-visible,
+.tobacco-editor h2:focus-visible,
+.card[tabindex]:focus-visible {
   outline: 2px solid #c2a473;
   outline-offset: 2px;
 }
@@ -210,6 +213,10 @@ textarea::placeholder {
   object-fit: cover;
 }
 .photo .silhouette {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   font:
     italic 75px Georgia,
     serif;
@@ -217,6 +224,7 @@ textarea::placeholder {
 }
 .info {
   padding: 17px;
+  overflow-wrap: anywhere;
 }
 .name {
   font:
@@ -398,7 +406,9 @@ textarea::placeholder {
     font-size: 24px;
   }
   .nav {
-    gap: 17px;
+    flex-wrap: wrap;
+    gap: 0 17px;
+    overflow: visible;
     margin-bottom: 28px;
   }
   .intro {
@@ -491,53 +501,144 @@ button:disabled {
   }
 }
 
-.account {
-  margin: 22px 0;
+.auth-shell {
+  display: grid;
+  justify-items: center;
+  padding-top: clamp(28px, 9vh, 96px);
+}
+
+.auth-screen {
+  width: min(100%, 420px);
+  padding: clamp(20px, 5vw, 36px);
   border: 1px solid #55513f;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #20231d;
-}
-.account summary {
-  cursor: pointer;
-  padding: 16px;
-  color: #e7c996;
-}
-.account summary:focus-visible {
-  outline: 2px solid #c2a473;
-  outline-offset: 2px;
-}
-.accountbody {
-  padding: 0 20px 20px;
+  box-shadow: 0 18px 55px #0004;
   overflow-wrap: anywhere;
 }
-.account h2 {
-  font: normal 28px Georgia, serif;
+
+.auth-screen h1 {
+  margin: 0 0 8px;
+  font: normal clamp(26px, 6vw, 34px) Georgia, serif;
   color: #eddcb9;
 }
-.account form {
-  max-width: 460px;
+
+.auth-screen h1:focus-visible,
+.profile-dialog h2:focus-visible {
+  outline: 2px solid #c2a473;
+  outline-offset: 4px;
 }
-.account fieldset {
+
+.auth-screen fieldset {
   border: 0;
   padding: 0;
-  margin: 0;
+  margin: 20px 0 0;
   display: grid;
   gap: 16px;
   min-width: 0;
 }
+
 .accountnote {
   color: #b3ad9e;
   font-size: 13px;
   line-height: 1.6;
 }
-.accountsession, .accountlinks {
+
+.accountlinks {
   display: flex;
-  align-items: center;
-  gap: 18px;
+  gap: 6px 18px;
   flex-wrap: wrap;
+  margin-top: 14px;
 }
-.accountsession p { min-width: 0; }
-.accountlinks { margin-top: 16px; }
+
+.accountlinks .link {
+  min-height: 36px;
+  text-align: start;
+}
+
+.profile-menu {
+  position: relative;
+}
+
+.profile-trigger {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid #796643;
+  border-radius: 50%;
+  color: #e7c996;
+  background: transparent;
+}
+
+.profile-trigger:hover,
+.profile-trigger[aria-expanded="true"],
+.profile-popover button:hover,
+.profile-popover button:focus-visible {
+  background: #363226;
+}
+
+.profile-popover {
+  position: absolute;
+  inset: calc(100% + 8px) 0 auto auto;
+  z-index: 4;
+  width: 168px;
+  max-width: calc(100vw - 32px);
+  padding: 4px;
+  border: 1px solid #71634a;
+  border-radius: 8px;
+  background: #20231d;
+  box-shadow: 0 12px 32px #0008;
+}
+
+.profile-popover button {
+  display: block;
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 12px;
+  text-align: start;
+  border: 0;
+  border-radius: 4px;
+  color: #e9e1d3;
+  background: transparent;
+  font-size: 14px;
+}
+
+.profile-popover button:focus-visible {
+  outline-offset: -2px;
+}
+
+.profile-dialog {
+  width: min(420px, calc(100% - 32px));
+  color: inherit;
+  overflow-wrap: anywhere;
+}
+
+body:has(.profile-dialog[open]) {
+  overflow: hidden;
+}
+
+.profile-dialog::backdrop {
+  background: #0b0d0acf;
+}
+
+.profile-dialog h3 {
+  font: normal 20px Georgia, serif;
+}
+
+.profile-dialog .actions {
+  justify-content: flex-end;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 
 .cloudtools {
   display: flex;
@@ -788,8 +889,42 @@ button:disabled {
   accent-color: #c2a473;
 }
 
+.journal-filters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 .journal-controls {
+  align-items: center;
+  margin-bottom: 0;
+}
+
+.journal-filter-options summary {
+  width: fit-content;
+  padding-block: 8px;
+  color: #ccbb9d;
+  cursor: pointer;
+}
+
+.journal-secondary-filters {
   align-items: end;
+}
+
+@media (max-width: 550px) {
+  .journal-primary-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 12px;
+  }
+
+  .journal-primary-filters .search {
+    grid-column: 1 / -1;
+  }
+
+  .journal-secondary-filters > .field {
+    flex: 1 0 100%;
+  }
 }
 
 .journal-snapshot {
@@ -797,18 +932,6 @@ button:disabled {
   gap: 4px;
   overflow-wrap: anywhere;
   margin: 8px 0;
-}
-
-.stock-alert-settings {
-  margin-block: 0 18px;
-  padding: 10px 12px;
-  border: 1px solid #48463a;
-  border-radius: 6px;
-}
-
-.stock-alert-settings summary {
-  cursor: pointer;
-  color: #ccbb9d;
 }
 
 .stock-alert-controls {

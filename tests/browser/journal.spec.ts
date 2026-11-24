@@ -10,6 +10,7 @@ import {
   PHOTO,
   row,
   signIn,
+  signOut,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -192,6 +193,7 @@ test("stale stock is rejected and journal backups keep snapshots and photos with
   await expect(page.getByRole("alert")).toContainText("La scorta è cambiata");
   expect(api.sessions).toHaveLength(0);
 
+  accept(page);
   await page.getByRole("button", { name: "Ricarica dal cloud" }).click();
   await start(page, true);
   await product(page).selectOption("c1");
@@ -272,7 +274,7 @@ test("switching accounts during photo upload prevents late attachment and reject
   );
   await save(page).click();
   const request = await upload;
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await expect(editor(page)).toHaveCount(0);
   await signIn(page, "other@example.test");
   release();

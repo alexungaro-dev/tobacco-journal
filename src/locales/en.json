@@ -82,9 +82,13 @@
   "photoLoading": "Loading photo…",
   "sections": "Sections",
   "auth": {
+    "menu": "Account menu",
+    "preferences": "Preferences",
+    "close": "Close",
+    "loginIntro": "Sign in to your collection and smoking journal.",
     "account": "Account",
     "connected": "Signed in",
-    "localNotice": "The catalogue displays only the current account’s cloud pipes. Local data is never imported or deleted automatically. Legacy photos are retained pending Phase B.",
+    "localNotice": "Your collection and journal show cloud data for the current account. Local data is preserved and imported only on request.",
     "unavailable": "Account access is not configured. Local data is preserved; the catalogue requires authentication.",
     "badConfig": "Account configuration is invalid. Contact the site administrator. Local data is preserved.",
     "loading": "Restoring access…",
@@ -128,9 +132,16 @@
     "resend": "Resend confirmation email"
   },
   "cloud": {
+    "backToCatalogue": "Back to catalogue",
+    "targetMissing": "The requested product is unavailable in this catalogue.",
     "catalogue": "Personal cloud catalogue",
     "intro": "This account’s records are saved in the cloud.",
     "loading": "Loading cloud pipes…",
+    "reading": "Loading from the cloud…",
+    "readError": "Could not load data from the cloud. Check your connection and try again.",
+    "retry": "Try again",
+    "saving": "Working…",
+    "discardDraft": "Reload from the cloud and discard unsaved changes?",
     "reload": "Reload from cloud",
     "prepareLocal": "Prepare import from browser",
     "migrationTitle": "Import into cloud",
@@ -145,7 +156,7 @@
     "result": "Records verified in cloud: {{verified}}. Excluded: {{rejected}}. Conflicts or errors: {{failed}}. Not attempted: {{unattempted}}.",
     "photosNotUploaded": "The photo transfer is incomplete. Use Legacy photos to transfer verified images. Keep the original backup.",
     "footnote": "Cloud catalogue for the current account. Export a JSON backup regularly.",
-    "signInRequired": "Sign in from Account to view your pipes. Existing local data is preserved and is not displayed without authentication.",
+    "signInRequired": "Sign in from Account to view your catalogue. Your existing local data is preserved.",
     "preparing": "Preparing your personal profile…",
     "profileRequired": "Complete profile preparation in Account before using the catalogue.",
     "errors": {
@@ -326,6 +337,10 @@
     }
   },
   "diary": {
+    "filters": "More filters",
+    "filtersActive_one": "More filters ({{count}} active)",
+    "filtersActive_other": "More filters ({{count}} active)",
+    "resetFilters": "Reset filters",
     "signInRequired": "Sign in from Account to open your journal.",
     "title": "Smoking journal",
     "intro": "Log a session and fill in the details whenever you like.",
@@ -459,6 +474,8 @@
     }
   },
   "stockAlerts": {
+    "openSettings": "Stock alert settings",
+    "retry": "Retry stock preferences",
     "settings": "Stock alerts",
     "enable": "Show stock alerts",
     "threshold": "Cigar threshold (pieces)",

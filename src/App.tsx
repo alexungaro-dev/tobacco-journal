@@ -12,6 +12,8 @@ import { APP_NAME, APP_MONOGRAM, MODULES, type Module } from "./config";
 import { LANGUAGE_KEY } from "./i18n";
 import { useAuthContext } from "./auth/AuthContext";
 import { TobaccoCatalogue } from "./components/TobaccoCatalogue";
+import { AccountMenu, type AccountPanel } from "./components/AccountMenu";
+import { AccountDialog } from "./components/AccountDialog";
 import { StockAlertPreferences } from "./components/StockAlerts";
 import type { Catalogue } from "./data/smokingJournal";
 import { CloudCatalogue } from "./components/CloudCatalogue";
@@ -38,22 +40,63 @@ function currentModule(hash: string): Module {
   return MODULES.includes(value as Module) ? (value as Module) : "dashboard";
 }
 
+function recordId(hash: string, prefix: string) {
+  if (!hash.startsWith(prefix)) return undefined;
+  try {
+    return decodeURIComponent(hash.slice(prefix.length));
+  } catch {
+    return "";
+  }
+}
+
 function diaryShortcut(hash: string) {
   if (hash === "#diary/new") return { create: true } as const;
-  const prefix = "#diary/session/";
-  if (hash.startsWith(prefix)) {
-    try {
-      return { sessionId: decodeURIComponent(hash.slice(prefix.length)) };
-    } catch {
-      return undefined;
-    }
-  }
+  const sessionId = recordId(hash, "#diary/session/");
+  if (sessionId !== undefined) return { sessionId };
 }
 export default function App() {
   const { t, i18n } = useTranslation();
   const auth = useAuthContext();
   const [hash, setHash] = useState(() => location.hash);
   const module = currentModule(hash);
+  const targetId = recordId(hash, `#${module}/item/`);
+  const menuTrigger = useRef<HTMLButtonElement>(null);
+  const content = useRef<HTMLElement>(null);
+  const logoutPending = useRef(false);
+  const [signingOut, setSigningOut] = useState(false);
+  const [panel, setPanel] = useState<{ owner: string; view: AccountPanel }>();
+  const signedIn = !auth.loading && !auth.sessionError && !auth.recovery
+    ? auth.session
+    : null;
+  const owner = signedIn?.user.id;
+  const activePanel = panel?.owner === owner ? panel?.view : undefined;
+
+  useEffect(() => {
+    setPanel(undefined);
+    if (owner) content.current?.focus();
+  }, [owner]);
+
+  function closePanel() {
+    setPanel(undefined);
+    requestAnimationFrame(() => menuTrigger.current?.focus());
+  }
+
+  async function logout() {
+    if (logoutPending.current) return;
+    logoutPending.current = true;
+    setSigningOut(true);
+    setPanel(undefined);
+    auth.setMessage("");
+    try {
+      await auth.signOut();
+      auth.finishRecovery();
+    } catch {
+      // useAuth exposes a translated session error and the retry controls.
+    } finally {
+      logoutPending.current = false;
+      setSigningOut(false);
+    }
+  }
   const shortcut = useMemo(() => diaryShortcut(hash), [hash]);
   const cached = useRef<{ owner: string; catalogue: Catalogue } | undefined>(
     undefined,
@@ -78,8 +121,8 @@ export default function App() {
   }, []);
   useEffect(() => {
     document.documentElement.lang = i18n.language;
-    document.title = `${APP_NAME} — ${t(`nav.${module}`)}`;
-  }, [i18n.language, module, t]);
+    document.title = `${APP_NAME} — ${t(signedIn ? `nav.${module}` : "auth.login")}`;
+  }, [i18n.language, module, signedIn, t]);
   function navigate(next: Module) {
     location.hash = next;
     setHash(location.hash);
@@ -110,117 +153,133 @@ export default function App() {
               <option value="it">IT</option>
               <option value="en">EN</option>
             </select>
-            <div className="monogram">{APP_MONOGRAM}</div>
+            {signedIn ? (
+              <AccountMenu
+                key={signedIn.user.id}
+                trigger={menuTrigger}
+                preferencesReady={auth.profileReady}
+                onPanel={(view) => setPanel({ owner: signedIn.user.id, view })}
+                onLogout={() => void logout()}
+              />
+            ) : (
+              <div className="monogram">{APP_MONOGRAM}</div>
+            )}
           </div>
         </div>
       </header>
-      <main className="shell">
-        <Suspense fallback={<p role="status">{t("auth.loading")}</p>}>
-          <Account />
-        </Suspense>
-        <nav className="nav" aria-label={t("sections")}>
-          {MODULES.map((m) => (
-            <button
-              key={m}
-              className={module === m ? "active" : ""}
-              aria-current={module === m ? "page" : undefined}
-              onClick={() => navigate(m)}
-            >
-              {t(`nav.${m}`)}
-            </button>
-          ))}
-        </nav>
-        {auth.session &&
-        !auth.loading &&
-        !auth.sessionError &&
-        !auth.recovery ? (
-          auth.profileReady ? (
-            module === "pipes" ? (
-              <CloudCatalogue
-                key={auth.session.user.id}
-                userId={auth.session.user.id}
-                email={auth.session.user.email || ""}
-                onSessionLost={auth.invalidateSession}
-              />
-            ) : (
-              <StockAlertPreferences
-                key={auth.session.user.id}
-                owner={auth.session.user.id}
-                showSettings={module !== "dashboard"}
+      {signedIn ? (
+        <main className="shell" ref={content} tabIndex={-1}>
+          <nav className="nav" aria-label={t("sections")}>
+            {MODULES.map((m) => (
+              <button
+                key={m}
+                className={module === m ? "active" : ""}
+                aria-current={module === m ? "page" : undefined}
+                onClick={() => navigate(m)}
               >
-                {module === "dashboard" ? (
-                  <Suspense
-                    fallback={<p role="status">{t("dashboard.loading")}</p>}
-                  >
-                    <DashboardView
-                      owner={auth.session.user.id}
-                      onSessionLost={auth.invalidateSession}
-                      rememberCatalogue={rememberCatalogue}
-                    />
-                  </Suspense>
-                ) : module === "diary" ? (
-                  <Suspense
-                    fallback={<p role="status">{t("diary.working")}</p>}
-                  >
-                    <SmokingJournalView
-                      key={auth.session.user.id}
-                      userId={auth.session.user.id}
-                      email={auth.session.user.email || ""}
-                      onSessionLost={auth.invalidateSession}
-                      shortcut={shortcut}
-                      onShortcutOpened={clearShortcut}
-                      initialCatalogue={
-                        cached.current?.owner === auth.session.user.id
-                          ? cached.current.catalogue
-                          : undefined
-                      }
-                    />
-                  </Suspense>
-                ) : module === "cigars" ? (
-                  <Suspense
-                    fallback={<p role="status">{t("cigars.working")}</p>}
-                  >
-                    <CigarCatalogue
-                      key={auth.session.user.id}
-                      userId={auth.session.user.id}
-                      email={auth.session.user.email || ""}
-                      onSessionLost={auth.invalidateSession}
-                    />
-                  </Suspense>
-                ) : (
-                  <TobaccoCatalogue
-                    key={auth.session.user.id}
-                    userId={auth.session.user.id}
-                    email={auth.session.user.email || ""}
+                {t(`nav.${m}`)}
+              </button>
+            ))}
+          </nav>
+          {auth.message && (
+            <p
+              role="status"
+              className={auth.message === "auth.signedIn" ? "visually-hidden" : "auth-message"}
+            >
+              {t(auth.message)}
+            </p>
+          )}
+          {activePanel === "account" && (
+            <AccountDialog title={t("auth.account")} onClose={closePanel}>
+              <p>{t("auth.signedAs", {
+                email: signedIn.user.email || t("auth.account"),
+              })}</p>
+              <p className="accountnote">{t("auth.localNotice")}</p>
+            </AccountDialog>
+          )}
+          {auth.profileReady ? (
+            <StockAlertPreferences
+              key={signedIn.user.id}
+              owner={signedIn.user.id}
+              settingsOpen={activePanel === "preferences"}
+              onSettingsClose={closePanel}
+            >
+              {module === "pipes" ? (
+                <CloudCatalogue
+                  userId={signedIn.user.id}
+                  email={signedIn.user.email || ""}
+                  onSessionLost={auth.invalidateSession}
+                  targetId={targetId}
+                />
+              ) : module === "dashboard" ? (
+                <Suspense
+                  fallback={<p role="status">{t("dashboard.loading")}</p>}
+                >
+                  <DashboardView
+                    owner={signedIn.user.id}
+                    onSessionLost={auth.invalidateSession}
+                    rememberCatalogue={rememberCatalogue}
+                  />
+                </Suspense>
+              ) : module === "diary" ? (
+                <Suspense
+                  fallback={<p role="status">{t("diary.working")}</p>}
+                >
+                  <SmokingJournalView
+                    userId={signedIn.user.id}
+                    email={signedIn.user.email || ""}
+                    onSessionLost={auth.invalidateSession}
+                    shortcut={shortcut}
+                    onShortcutOpened={clearShortcut}
+                    initialCatalogue={
+                      cached.current?.owner === signedIn.user.id
+                        ? cached.current.catalogue
+                        : undefined
+                    }
+                  />
+                </Suspense>
+              ) : module === "cigars" ? (
+                <Suspense
+                  fallback={<p role="status">{t("cigars.working")}</p>}
+                >
+                  <CigarCatalogue
+                    targetId={targetId}
+                    userId={signedIn.user.id}
+                    email={signedIn.user.email || ""}
                     onSessionLost={auth.invalidateSession}
                   />
-                )}
-              </StockAlertPreferences>
-            )
+                </Suspense>
+              ) : (
+                <TobaccoCatalogue
+                  targetId={targetId}
+                  userId={signedIn.user.id}
+                  email={signedIn.user.email || ""}
+                  onSessionLost={auth.invalidateSession}
+                />
+              )}
+            </StockAlertPreferences>
+          ) : auth.profileError ? (
+            <div className="notice">
+              <p role="alert">{t("auth.errors.profile")}</p>
+              <button className="btn secondary" type="button" onClick={auth.retryProfile}>
+                {t("auth.retryProfile")}
+              </button>
+            </div>
           ) : (
-            <p role="status">
-              {t(
-                auth.profileError ? "cloud.profileRequired" : "cloud.preparing",
-              )}
-            </p>
-          )
-        ) : (
-          <section className="placeholder">
-            <h1>{t(module === "pipes" ? "title" : `${module}.title`)}</h1>
-            <p>
-              {t(
-                auth.loading
-                  ? "auth.loading"
-                  : module === "dashboard"
-                    ? "dashboard.signInRequired"
-                    : module === "diary"
-                      ? "diary.signInRequired"
-                      : "cloud.signInRequired",
-              )}
-            </p>
-          </section>
-        )}
-      </main>
+            <p role="status">{t("cloud.preparing")}</p>
+          )}
+        </main>
+      ) : (
+        <main className="shell auth-shell">
+          <Suspense fallback={<p role="status">{t("auth.loading")}</p>}>
+            <Account
+              key={auth.recovery ? auth.session?.user.id ?? "recovery" : "guest"}
+              signingOut={signingOut}
+              onLogout={() => void logout()}
+            />
+          </Suspense>
+        </main>
+      )}
     </>
   );
 }
