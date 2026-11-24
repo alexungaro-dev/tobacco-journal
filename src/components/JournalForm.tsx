@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
+import { EditorFeedback } from "./CloudFeedback";
 import {
   aromaTags,
   detailGroups,
@@ -223,6 +225,9 @@ export function JournalForm({
   catalogue,
   stockAllowed,
   busy,
+  headingRef,
+  saveError,
+  saveStatus,
   photo,
   pending,
   onSave,
@@ -233,6 +238,9 @@ export function JournalForm({
   catalogue: Catalogue;
   stockAllowed: boolean;
   busy: boolean;
+  headingRef: Ref<HTMLHeadingElement>;
+  saveError: string;
+  saveStatus?: string;
   photo: PrivatePhoto;
   pending?: string;
   onSave: (
@@ -370,7 +378,7 @@ export function JournalForm({
         }
       }}
     >
-      <h2 id={title}>{t(initial ? "diary.edit" : "diary.add")}</h2>
+      <h2 id={title} ref={headingRef} tabIndex={-1}>{t(initial ? "diary.edit" : "diary.add")}</h2>
       <fieldset className="pipefields" disabled={busy}>
         <div className="formgrid">
           <label className="field">
@@ -614,7 +622,11 @@ export function JournalForm({
             </div>
           </details>
         </div>
-        {error && <p role="alert">{t(error)}</p>}
+        <EditorFeedback
+          error={error || saveError}
+          status={saveStatus}
+          busy={busy}
+        />
         <div className="actions">
           {initial && (
             <button type="button" className="btn danger" onClick={onDelete}>

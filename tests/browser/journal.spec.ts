@@ -192,6 +192,7 @@ test("stale stock is rejected and journal backups keep snapshots and photos with
   await expect(page.getByRole("alert")).toContainText("La scorta è cambiata");
   expect(api.sessions).toHaveLength(0);
 
+  accept(page);
   await page.getByRole("button", { name: "Ricarica dal cloud" }).click();
   await start(page, true);
   await product(page).selectOption("c1");

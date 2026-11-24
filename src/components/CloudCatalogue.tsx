@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ListFeedback } from "./CloudFeedback";
 import { supabase } from "../auth/client";
 import { useCloudPipes } from "../data/useCloudPipes";
 import {
@@ -86,7 +87,7 @@ export function CloudCatalogue({
     }
   }
   async function transfer() {
-    if (!plan || disabled) return;
+    if (!plan || disabled || cloud.readError) return;
     const count = plan.items.filter((i) => i.pipe).length;
     if (!window.confirm(t("cloud.confirmImport", { count, email }))) return;
     setResult(null);
@@ -114,13 +115,24 @@ export function CloudCatalogue({
         </div>
         <button
           className="btn"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={() => setEditing(null)}
         >
           {t("add")}
         </button>
       </section>
-      {cloud.loading && <p role="status">{t("cloud.loading")}</p>}
+      <ListFeedback
+        state={
+          cloud.loading
+            ? { kind: "loading" }
+            : cloud.readError
+              ? { kind: "error", message: cloud.readError }
+              : { kind: "ready" }
+        }
+        loading="cloud.loading"
+        onRetry={cloud.reload}
+        busy={disabled}
+      />
       {((cloud.error && editing === undefined) || notice) && (
         <div className="notice" role="alert">
           {cloud.error && <p>{t(cloud.error)}</p>}
@@ -164,9 +176,11 @@ export function CloudCatalogue({
           ))}
         </select>
       </div>
-      <div className="count">
-        {t("count", { visible: filtered.length, total: cloud.pipes.length })}
-      </div>
+      {!cloud.loading && !cloud.readError && (
+        <div className="count">
+          {t("count", { visible: filtered.length, total: cloud.pipes.length })}
+        </div>
+      )}
       <section className="grid" aria-live="polite" aria-busy={cloud.loading}>
         {filtered.map((p) => (
           <PipeCard
@@ -178,7 +192,7 @@ export function CloudCatalogue({
             }}
           />
         ))}
-        {!cloud.loading && !cloud.error && !filtered.length && (
+        {!cloud.loading && !cloud.readError && !cloud.error && !filtered.length && (
           <div className="empty">
             <strong>
               {t(cloud.pipes.length ? "noResults" : "emptyTitle")}
@@ -191,7 +205,7 @@ export function CloudCatalogue({
       <div className="cloudtools">
         <button
           className="btn secondary"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={async () => {
             setExportFailed(false);
             const backup = await cloud.exportBackup();
@@ -211,7 +225,7 @@ export function CloudCatalogue({
         </button>
         <button
           className="btn secondary"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={() => {
             try {
               prepare(localStorage.getItem(PIPES_KEY) || "[]", "local");
@@ -226,7 +240,7 @@ export function CloudCatalogue({
         </button>
         <button
           className="btn secondary"
-          disabled={disabled || !!cloud.error}
+          disabled={disabled || !!cloud.error || !!cloud.readError}
           onClick={() => file.current?.click()}
         >
           {t("import")}
@@ -348,7 +362,7 @@ export function CloudCatalogue({
             <button
               className="btn"
               disabled={
-                disabled || !!cloud.error || !plan.items.some((i) => i.pipe)
+                disabled || !!cloud.error || !!cloud.readError || !plan.items.some((i) => i.pipe)
               }
               onClick={() => void transfer()}
             >

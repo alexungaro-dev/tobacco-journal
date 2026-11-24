@@ -287,6 +287,7 @@ export function PipeForm({
                 </div>
               </div>
             </div>
+            {busy && <p role="status">{t("cloud.saving")}</p>}
             {warning && <p role="status">{t(warning)}</p>}
             {(error || cloudError) && (
               <p className="formerror" role="alert">

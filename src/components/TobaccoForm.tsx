@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
+import { EditorFeedback } from "./CloudFeedback";
 import { PHOTO_TYPES, validatePhoto, type PhotoEdit } from "../data/pipePhotos";
 import { cloudErrorKey } from "../data/pipeMapping";
 import {
@@ -24,6 +26,9 @@ export function TobaccoForm({
   photo,
   pending,
   busy,
+  headingRef,
+  saveError,
+  saveStatus,
   save,
   cancel,
   remove,
@@ -32,6 +37,9 @@ export function TobaccoForm({
   photo: PrivatePhoto;
   pending?: string;
   busy: boolean;
+  headingRef: Ref<HTMLHeadingElement>;
+  saveError: string;
+  saveStatus?: string;
   save: (tobacco: Tobacco, edit: PhotoEdit) => Promise<void>;
   cancel: () => void;
   remove: () => void;
@@ -39,7 +47,6 @@ export function TobaccoForm({
   const { t } = useTranslation();
   const id = useRef(initial?.id || crypto.randomUUID());
   const mounted = useRef(false);
-  const brand = useRef<HTMLInputElement>(null);
   const [edit, setEdit] = useState<PhotoEdit>();
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +56,6 @@ export function TobaccoForm({
   const preview = usePhotoPreview(edit || undefined);
   useEffect(() => {
     mounted.current = true;
-    brand.current?.focus();
     return () => {
       mounted.current = false;
     };
@@ -83,7 +89,7 @@ export function TobaccoForm({
         }
       }}
     >
-      <h2 id="tobacco-form-title">
+      <h2 id="tobacco-form-title" ref={headingRef} tabIndex={-1}>
         {t(initial ? "tobaccos.edit" : "tobaccos.add")}
       </h2>
       <fieldset className="pipefields" disabled={busy}>
@@ -92,7 +98,6 @@ export function TobaccoForm({
             <label className="field" key={key}>
               {t("tobaccos.fields." + key)}
               <input
-                ref={key === "brand" ? brand : undefined}
                 name={key}
                 required={key === "brand" || key === "name"}
                 maxLength={200}
@@ -266,7 +271,11 @@ export function TobaccoForm({
             </div>
           </div>
         </div>
-        {error && <p role="alert">{t(error)}</p>}
+        <EditorFeedback
+          error={error || saveError}
+          status={saveStatus}
+          busy={busy}
+        />
         <div className="actions">
           {initial && (
             <button className="btn danger" type="button" onClick={remove}>

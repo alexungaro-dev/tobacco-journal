@@ -326,12 +326,9 @@ test("network errors and lost write responses never report false success or dupl
   await page.goto("/#pipes");
   await signIn(page);
   await expect(page.getByRole("alert")).toContainText(
-    "Operazione cloud non verificata",
+    "Impossibile caricare i dati dal cloud",
   );
-  await page
-    .getByRole("button", { name: "Ricarica dal cloud" })
-    .first()
-    .click();
+  await page.getByRole("button", { name: "Riprova", exact: true }).click();
   await expect(page.getByText("La tua collezione inizia qui")).toBeVisible();
   await page.getByRole("button", { name: "+ Aggiungi pipa" }).click();
   await page.getByLabel("Marca *").fill("Network");

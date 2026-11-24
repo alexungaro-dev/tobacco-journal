@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
+import type { Ref } from "react";
 import { useTranslation } from "react-i18next";
+import { EditorFeedback } from "./CloudFeedback";
 import {
   cigarNumberFields,
   normalizeCigar,
@@ -16,6 +18,9 @@ export function CigarForm({
   photo,
   pending,
   busy,
+  headingRef,
+  saveError,
+  saveStatus,
   onSave,
   onCancel,
   onDelete,
@@ -24,6 +29,9 @@ export function CigarForm({
   photo: PrivatePhoto;
   pending?: string;
   busy: boolean;
+  headingRef: Ref<HTMLHeadingElement>;
+  saveError: string;
+  saveStatus?: string;
   onSave: (item: Cigar, edit: PhotoEdit) => Promise<void>;
   onCancel: () => void;
   onDelete: () => void;
@@ -33,7 +41,6 @@ export function CigarForm({
   const heading = useId();
   const suggestions = useId();
   const mounted = useRef(false);
-  const brand = useRef<HTMLInputElement>(null);
   const [rating, setRating] = useState(initial?.rating ?? null);
   const [edit, setEdit] = useState<PhotoEdit>();
   const [checking, setChecking] = useState(false);
@@ -43,7 +50,6 @@ export function CigarForm({
   const field = (key: keyof Cigar) => t("cigars.fields." + key);
   useEffect(() => {
     mounted.current = true;
-    brand.current?.focus();
     return () => {
       mounted.current = false;
     };
@@ -55,7 +61,6 @@ export function CigarForm({
         {field(key)}
         <input
           name={key}
-          ref={key === "brand" ? brand : undefined}
           required={key === "brand" || key === "name"}
           list={key === "vitola" ? suggestions : undefined}
           type={key === "date" ? "date" : "text"}
@@ -114,7 +119,7 @@ export function CigarForm({
         }
       }}
     >
-      <h2 id={heading}>{t(initial ? "cigars.edit" : "cigars.add")}</h2>
+      <h2 id={heading} ref={headingRef} tabIndex={-1}>{t(initial ? "cigars.edit" : "cigars.add")}</h2>
       <fieldset className="pipefields" disabled={busy}>
         <div className="formgrid">
           {(["brand", "name", "series", "vitola", "country"] as const).map(
@@ -222,7 +227,11 @@ export function CigarForm({
             </div>
           </div>
         </div>
-        {error && <p role="alert">{t(error)}</p>}
+        <EditorFeedback
+          error={error || saveError}
+          status={saveStatus}
+          busy={busy}
+        />
         <div className="actions">
           {initial && (
             <button className="btn danger" type="button" onClick={onDelete}>

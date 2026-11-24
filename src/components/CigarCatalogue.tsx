@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ListFeedback, type ReadState } from "./CloudFeedback";
+import { useInlineEditorFocus } from "./useInlineEditorFocus";
 import { supabase } from "../auth/client";
 import {
   CloudCigars,
@@ -36,11 +38,13 @@ export function CigarCatalogue({
   const lock = useRef(false);
   const file = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<CigarRow[]>([]);
+  const [readState, setReadState] = useState<ReadState>({ kind: "loading" });
   const [editing, setEditing] = useState<CigarRow | null>();
   const [partiallyCreated, setPartiallyCreated] = useState<CigarRow>();
   const [busy, setBusy] = useState(true);
+  const focus = useInlineEditorFocus(editing !== undefined, busy);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<{ message: string; itemId?: string }>();
   const [search, setSearch] = useState("");
   const [vitola, setVitola] = useState("");
   const [country, setCountry] = useState("");
@@ -58,7 +62,7 @@ export function CigarCatalogue({
     lock.current = true;
     setBusy(true);
     setError("");
-    setNotice("");
+    setNotice(undefined);
     try {
       await action(service);
     } catch (failure) {
@@ -75,8 +79,18 @@ export function CigarCatalogue({
   }
 
   async function reload(service: CloudCigars) {
-    const next = await service.list();
-    if (scope.current === service) setRows(next);
+    setReadState({ kind: "loading" });
+    try {
+      const next = await service.list();
+      if (scope.current !== service) return;
+      setRows(next);
+      setReadState({ kind: "ready" });
+    } catch (failure) {
+      if (scope.current !== service) return;
+      const key = cloudErrorKey(failure);
+      if (key === "cloud.errors.session") invalidate.current();
+      else setReadState({ kind: "error", message: "cloud.readError" });
+    }
   }
 
   useEffect(() => {
@@ -203,33 +217,52 @@ export function CigarCatalogue({
         collator.compare(a.cigar.brand, b.cigar.brand)
       );
     });
-  const blocked = busy || editing !== undefined;
+  const blocked = busy || editing !== undefined || readState.kind !== "ready";
+
+  function reloadFromCloud() {
+    if (editing !== undefined && !window.confirm(t("cloud.discardDraft")))
+      return;
+    open(undefined);
+    void run(reload);
+  }
 
   return (
     <>
       <section className="intro">
         <div>
-          <h1>{t("cigars.title")}</h1>
+          <h1 ref={focus.heading} tabIndex={-1}>
+            {t("cigars.title")}
+          </h1>
           <p>{t("cigars.intro")}</p>
         </div>
-        <button className="btn" disabled={blocked} onClick={() => open(null)}>
+        <button className="btn" disabled={blocked} onClick={(event) => {
+          focus.trigger.current = event.currentTarget;
+          open(null);
+        }}>
           {t("cigars.add")}
         </button>
       </section>
-      {busy && <p role="status">{t("cigars.working")}</p>}
-      {error && (
+      <ListFeedback state={readState} onRetry={reloadFromCloud} busy={busy} />
+      {busy && editing === undefined && readState.kind !== "loading" && (
+        <p role="status">{t("cigars.working")}</p>
+      )}
+      {error && editing === undefined && (
         <p className="notice" role="alert">
           {t(error)}
         </p>
       )}
-      {notice && <p role="status">{t(notice)}</p>}
-      {partiallyCreated && <p role="status">{t("cigars.partial")}</p>}
+      {notice && !visible.some(({ row }) => row.id === notice.itemId) && (
+        <p role="status">{t(notice.message)}</p>
+      )}
       {editing !== undefined && (
         <CigarForm
           initial={editing ? fromCigarRow(editing) : undefined}
           photo={photo(editing ?? undefined)}
           pending={pendingPhoto(editing ?? undefined)}
           busy={busy}
+          headingRef={focus.editorHeading}
+          saveError={error}
+          saveStatus={partiallyCreated ? "cigars.partial" : undefined}
           onCancel={() => open(undefined)}
           onSave={(item, edit) =>
             run(async (service) => {
@@ -247,7 +280,10 @@ export function CigarCatalogue({
               if (scope.current !== service) return;
               keep(outcome.row);
               open(undefined);
-              setNotice(outcome.cleanup ? "photos.cleanup" : "cigars.saved");
+              setNotice({
+                message: outcome.cleanup ? "photos.cleanup" : "cigars.saved",
+                itemId: editing?.id,
+              });
             })
           }
           onDelete={() => {
@@ -263,7 +299,7 @@ export function CigarCatalogue({
                 current.filter((entry) => entry.id !== editing.id),
               );
               open(undefined);
-              setNotice(cleanup ? "photos.cleanup" : "cigars.deleted");
+              setNotice({ message: cleanup ? "photos.cleanup" : "cigars.deleted" });
             });
           }}
         />
@@ -306,11 +342,13 @@ export function CigarCatalogue({
           ))}
         </select>
       </div>
-      <p className="count">
-        {t("count", { visible: visible.length, total: rows.length })}
-      </p>
+      {readState.kind === "ready" && (
+        <p className="count">
+          {t("count", { visible: visible.length, total: rows.length })}
+        </p>
+      )}
       <section className="grid" aria-busy={busy}>
-        {!busy && !visible.length && (
+        {!busy && readState.kind === "ready" && !visible.length && (
           <p className="empty">
             {t(rows.length ? "noResults" : "cigars.empty")}
           </p>
@@ -365,11 +403,17 @@ export function CigarCatalogue({
                 <button
                   className="link"
                   disabled={blocked}
-                  onClick={() => open(row)}
+                  onClick={(event) => {
+                    focus.trigger.current = event.currentTarget;
+                    open(row);
+                  }}
                 >
                   {t("edit")}
                 </button>
               </div>
+              {notice?.itemId === row.id && (
+                <p role="status">{t(notice.message)}</p>
+              )}
             </div>
           </article>
         ))}
@@ -378,10 +422,7 @@ export function CigarCatalogue({
         <button
           className="btn secondary"
           disabled={busy}
-          onClick={() => {
-            open(undefined);
-            void run(reload);
-          }}
+          onClick={reloadFromCloud}
         >
           {t("cloud.reload")}
         </button>

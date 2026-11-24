@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ListFeedback, type ReadState } from "./CloudFeedback";
+import { useInlineEditorFocus } from "./useInlineEditorFocus";
 import { supabase } from "../auth/client";
 import {
   aromaTags,
@@ -58,15 +60,17 @@ export function SmokingJournalView({
   const targetCard = useRef<HTMLElement>(null);
   const [rows, setRows] = useState<SessionRow[]>([]);
   const [catalogue, setCatalogue] = useState(blankCatalogue);
-  const [ready, setReady] = useState(false);
+  const [readState, setReadState] = useState<ReadState>({ kind: "loading" });
+  const ready = readState.kind === "ready";
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const [notice, setNotice] = useState<{ message: string; itemId?: string }>();
   const [stockFeedback, setStockFeedback] = useState<{
     requested: boolean;
     outcome?: StockOutcome;
   }>();
   const [editing, setEditing] = useState<SessionRow | null>();
+  const focus = useInlineEditorFocus(editing !== undefined, busy);
   const [created, setCreated] = useState<SessionRow>();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState({
@@ -92,7 +96,7 @@ export function SmokingJournalView({
     lock.current = true;
     setBusy(true);
     setError("");
-    setNotice("");
+    setNotice(undefined);
     try {
       await action(service);
     } catch (failure) {
@@ -109,28 +113,29 @@ export function SmokingJournalView({
   }
 
   async function load(service: SmokingJournal, cachedCatalogue?: Catalogue) {
-    let sessions: SessionRow[];
-    let items: Catalogue;
+    setReadState({ kind: "loading" });
     try {
-      [sessions, items] = await Promise.all([
+      const [sessions, items] = await Promise.all([
         service.list(),
         cachedCatalogue ?? service.catalogue(),
       ]);
-    } catch (failure) {
-      if (
-        ["PGRST204", "42703", "42P01"].includes(
-          (failure as { code?: string })?.code ?? "",
-        )
-      ) {
-        if (scope.current === service) setError("diary.migration");
-        return;
-      }
-      throw failure;
-    }
-    if (scope.current === service) {
+      if (scope.current !== service) return;
       setRows(sessions);
       setCatalogue(items);
-      setReady(true);
+      setReadState({ kind: "ready" });
+    } catch (failure) {
+      if (scope.current !== service) return;
+      if (cloudErrorKey(failure) === "cloud.errors.session") {
+        invalidate.current();
+        return;
+      }
+      const schemaMissing = ["PGRST204", "42703", "42P01"].includes(
+        (failure as { code?: string })?.code ?? "",
+      );
+      setReadState({
+        kind: "error",
+        message: schemaMissing ? "diary.migration" : "cloud.readError",
+      });
     }
   }
 
@@ -221,7 +226,7 @@ export function SmokingJournalView({
       return;
     void run(async (service) => {
       await service.addProduct(kind, product);
-      if (scope.current === service) setNotice("diary.catalogueSaved");
+      if (scope.current === service) setNotice({ message: "diary.catalogueSaved" });
     });
   }
   const searchValue = search.trim().toLocaleLowerCase(i18n.language);
@@ -274,6 +279,7 @@ export function SmokingJournalView({
 
   useEffect(() => {
     if (ready && shortcut && "create" in shortcut) {
+      focus.trigger.current = null;
       setEditing(null);
       onShortcutOpened?.();
     }
@@ -289,6 +295,13 @@ export function SmokingJournalView({
       ? entries.filter(({ row }) => row.id === targetId)
       : visible;
   const blocked = !ready || busy || editing !== undefined;
+
+  function reloadFromCloud() {
+    if (editing !== undefined && !window.confirm(t("cloud.discardDraft")))
+      return;
+    open(undefined);
+    void run(load);
+  }
   function describe(kind: ProductKind, product: Snapshot) {
     return (
       <div className="journal-snapshot">
@@ -361,21 +374,34 @@ export function SmokingJournalView({
     <>
       <section className="intro">
         <div>
-          <h1>{t("diary.title")}</h1>
+          <h1 ref={focus.heading} tabIndex={-1}>
+            {t("diary.title")}
+          </h1>
           <p>{t("diary.intro")}</p>
         </div>
-        <button className="btn" disabled={blocked} onClick={() => open(null)}>
+        <button
+          className="btn"
+          disabled={blocked}
+          onClick={(event) => {
+            focus.trigger.current = event.currentTarget;
+            open(null);
+          }}
+        >
           {t("diary.add")}
         </button>
       </section>
-      {busy && <p role="status">{t("diary.working")}</p>}
-      {error && (
+      <ListFeedback state={readState} onRetry={reloadFromCloud} busy={busy} />
+      {busy && editing === undefined && readState.kind !== "loading" && (
+        <p role="status">{t("diary.working")}</p>
+      )}
+      {error && editing === undefined && (
         <p className="notice" role="alert">
           {t(error)}
         </p>
       )}
-      {notice && <p role="status">{t(notice)}</p>}
-      {created && <p role="status">{t("diary.partial")}</p>}
+      {notice && !displayed.some(({ row }) => row.id === notice.itemId) && (
+        <p role="status">{t(notice.message)}</p>
+      )}
       {stockFeedback && (
         <p role="status" className="stock-confirmation">
           {t(
@@ -396,6 +422,9 @@ export function SmokingJournalView({
           catalogue={catalogue}
           stockAllowed={!editing && !created}
           busy={busy}
+          headingRef={focus.editorHeading}
+          saveError={error}
+          saveStatus={created ? "diary.partial" : undefined}
           photo={photo(editing ?? undefined)}
           pending={pendingPhoto(editing ?? undefined)}
           onCancel={() => {
@@ -425,7 +454,10 @@ export function SmokingJournalView({
               if (scope.current !== service) return;
               keep(saved.row);
               open(undefined);
-              setNotice(saved.cleanup ? "photos.cleanup" : "diary.saved");
+              setNotice({
+                message: saved.cleanup ? "photos.cleanup" : "diary.saved",
+                itemId: editing?.id,
+              });
               if (!editing) {
                 const requested =
                   !!stock || !!(created && stockFeedback?.requested);
@@ -444,8 +476,7 @@ export function SmokingJournalView({
                   if (cloudErrorKey(failure) === "cloud.errors.session")
                     throw failure;
                   if (scope.current === service) {
-                    setReady(false);
-                    setError("diary.stockReload");
+                    setReadState({ kind: "error", message: "diary.stockReload" });
                   }
                 }
               }
@@ -460,7 +491,7 @@ export function SmokingJournalView({
                 current.filter((row) => row.id !== editing.id),
               );
               open(undefined);
-              setNotice(cleanup ? "photos.cleanup" : "diary.deleted");
+              setNotice({ message: cleanup ? "photos.cleanup" : "diary.deleted" });
             });
           }}
         />
@@ -547,9 +578,11 @@ export function SmokingJournalView({
               </select>
             </label>
           </div>
-          <p className="count">
-            {t("count", { visible: visible.length, total: rows.length })}
-          </p>
+          {ready && (
+            <p className="count">
+              {t("count", { visible: visible.length, total: rows.length })}
+            </p>
+          )}
         </>
       )}
       <section className="grid" aria-busy={busy}>
@@ -618,10 +651,16 @@ export function SmokingJournalView({
               <button
                 className="link"
                 disabled={blocked}
-                onClick={() => open(row)}
+                onClick={(event) => {
+                  focus.trigger.current = event.currentTarget;
+                  open(row);
+                }}
               >
                 {t("diary.edit")}
               </button>
+              {notice?.itemId === row.id && (
+                <p role="status">{t(notice.message)}</p>
+              )}
             </div>
           </article>
         ))}
@@ -630,10 +669,7 @@ export function SmokingJournalView({
         <button
           className="btn secondary"
           disabled={busy}
-          onClick={() => {
-            open(undefined);
-            void run(load);
-          }}
+          onClick={reloadFromCloud}
         >
           {t("cloud.reload")}
         </button>
