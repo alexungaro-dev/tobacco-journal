@@ -31,6 +31,12 @@ test("journal editor scrolls into view and restores focus after cancel or deleti
   await expect(trigger).toBeFocused();
 
   await trigger.click();
+  await page.getByRole("searchbox", { name: "Cerca nel diario" }).fill("No matching card");
+  await editor.getByRole("button", { name: "Annulla" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
+  await page.getByRole("button", { name: "Azzera filtri" }).click();
+
+  await trigger.click();
   page.once("dialog", (dialog) => dialog.accept());
   await editor.getByRole("button", { name: "Elimina" }).click();
   await expect(page.locator(".card")).toHaveCount(11);
@@ -154,14 +160,14 @@ test("navigation fits at 320 and 390 px in IT and EN and journal filters stay co
 test("legacy pipes with missing status match In use and long names wrap", async ({ page }) => {
   const longName = "L".repeat(100);
   const legacy = row(OWNER_A, { ...LEGACY, status: undefined });
-  await cloudMock(page, [legacy], [], [cigarRow(OWNER_A, "long", longName)]);
+  const api = await cloudMock(page, [legacy], [], [cigarRow(OWNER_A, "long", longName)]);
   await page.setViewportSize({ width: 320, height: 844 });
   await page.goto("/#pipes");
   await signIn(page);
   await expect(page.locator(".card .pill")).toHaveText("In uso");
   await page.getByLabel("Stato", { exact: true }).selectOption("in_use");
   await expect(page.locator(".card")).toHaveCount(1);
-  expect(legacy.status).toBeNull();
+  expect(api.rows[0].status).toBeNull();
 
   await page.getByRole("navigation").getByRole("button", { name: "Sigari" }).click();
   const title = page.locator(".card .name");
@@ -209,7 +215,12 @@ test("dashboard links open the exact product and direct routes preserve filters 
   await page.goBack();
   await expect(page.getByRole("article", { name: "Example Featured" })).toBeFocused();
 
-  await page.goto("/#cigars/item/removed");
+  await page.reload();
+  const direct = page.getByRole("article", { name: "Example Featured" });
+  await expect(direct).toBeFocused();
+  await direct.getByRole("button", { name: "Visualizza / Modifica →" }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Elimina", exact: true }).click();
   await expect(page.getByText("Il prodotto richiesto non è disponibile in questo catalogo.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 1 })).toBeFocused();
   await page.getByRole("link", { name: "Torna al catalogo" }).click();

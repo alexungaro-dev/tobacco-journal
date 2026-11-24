@@ -407,7 +407,13 @@ export function TobaccoCatalogue({
       <section className="grid" aria-busy={busy}>
         {!busy && readState.kind === "ready" && !displayed.length && (
           <p className="empty">
-            {t(targetId !== undefined ? "cloud.targetMissing" : rows.length ? "noResults" : "tobaccos.empty")}
+            {t(
+              targetId !== undefined
+                ? "cloud.targetMissing"
+                : rows.length
+                  ? "noResults"
+                  : "tobaccos.empty",
+            )}
           </p>
         )}
         {displayed.map(({ row, tobacco }) => (
@@ -420,6 +426,7 @@ export function TobaccoCatalogue({
           >
             <div className="photo">
               <PipePhoto
+                defer
                 id={row.id}
                 photo={photo(row)}
                 legacy={pendingPhoto(row)}

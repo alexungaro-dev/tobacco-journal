@@ -29,6 +29,7 @@ export function PipeCard({
     >
       <div className="photo">
         <PipePhoto
+          defer
           id={p.id}
           legacy={p.photo}
           photo={photo}

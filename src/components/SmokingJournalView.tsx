@@ -653,6 +653,7 @@ export function SmokingJournalView({
             {row.extra.journalPhoto || pendingPhoto(row) ? (
               <div className="photo">
                 <PipePhoto
+                  defer
                   id={row.id}
                   photo={photo(row)}
                   legacy={pendingPhoto(row)}

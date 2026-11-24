@@ -223,6 +223,7 @@ test("stale edits, logout during upload, and owner switching leave the other cat
   api.tobaccos[0].updated_at = "2026-11-18T10:00:00.000Z";
   await save(page).click();
   await expect(page.getByRole("alert")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: /Ricarica/ }).click();
   await card(page, "Example Mixture").getByRole("button").click();
   await editor(page)

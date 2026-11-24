@@ -13,7 +13,7 @@ export function useRecordTarget(
   useEffect(() => {
     const leftDetail = previous.current !== undefined && id === undefined;
     previous.current = id;
-    if (id !== undefined && ready) (card.current ?? heading.current)?.focus();
+    if (id !== undefined && ready) (found ? card.current : heading.current)?.focus();
     else if (leftDetail) heading.current?.focus();
   }, [id, ready, found, heading]);
 

@@ -26,8 +26,10 @@ const choose = (page: Page, source = replacement) =>
     mimeType: "image/png",
     buffer: data(source),
   });
-const privatePicture = (page: Page) =>
-  expect(card(page).locator("img")).toHaveAttribute("src", /^blob:/);
+async function privatePicture(page: Page) {
+  await card(page).locator(".photo").scrollIntoViewIfNeeded();
+  await expect(card(page).locator("img")).toHaveAttribute("src", /^blob:/);
+}
 const pending = (page: Page, count: number) =>
   expect(
     page.getByText(`Fotografie ancora da trasferire: ${count}.`),

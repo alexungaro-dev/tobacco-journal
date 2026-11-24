@@ -213,6 +213,10 @@ textarea::placeholder {
   object-fit: cover;
 }
 .photo .silhouette {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   font:
     italic 75px Georgia,
     serif;

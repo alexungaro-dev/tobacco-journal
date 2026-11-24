@@ -109,6 +109,7 @@ test("dashboard is the default and links correct counts, recent details and the 
   await expect(sessions.nth(1)).toContainText("Pipa prestata");
   await expect(sessions.nth(2)).toContainText("Terza");
   await expect(latest(page)).toContainText("Example Nuovo");
+  await latest(page).locator(".photo").scrollIntoViewIfNeeded();
   await expect(latest(page).locator("img")).toHaveAttribute("src", /^blob:/);
   expect(
     api.requests.filter(({ path, method }) => method === "GET" && path.startsWith("/storage/")).length,

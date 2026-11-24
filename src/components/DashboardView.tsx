@@ -269,6 +269,7 @@ export function DashboardView({
                     photo.ref !== null && (
                       <div className="photo">
                         <PipePhoto
+                          defer
                           id={latest.item.id}
                           alt={t("photoAlt", { name: latest.item.name })}
                           legacy={photo.legacy}

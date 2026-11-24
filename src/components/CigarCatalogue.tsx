@@ -374,7 +374,13 @@ export function CigarCatalogue({
       <section className="grid" aria-busy={busy}>
         {!busy && readState.kind === "ready" && !displayed.length && (
           <p className="empty">
-            {t(targetId !== undefined ? "cloud.targetMissing" : rows.length ? "noResults" : "cigars.empty")}
+            {t(
+              targetId !== undefined
+                ? "cloud.targetMissing"
+                : rows.length
+                  ? "noResults"
+                  : "cigars.empty",
+            )}
           </p>
         )}
         {displayed.map(({ row, cigar }) => (
@@ -387,6 +393,7 @@ export function CigarCatalogue({
           >
             <div className="photo">
               <PipePhoto
+                defer
                 id={row.id}
                 photo={photo(row)}
                 legacy={pendingPhoto(row)}
