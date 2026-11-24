@@ -82,6 +82,10 @@
   "photoLoading": "Loading photo…",
   "sections": "Sections",
   "auth": {
+    "menu": "Account menu",
+    "preferences": "Preferences",
+    "close": "Close",
+    "loginIntro": "Sign in to your collection and smoking journal.",
     "account": "Account",
     "connected": "Signed in",
     "localNotice": "Your collection and journal show cloud data for the current account. Local data is preserved and imported only on request.",

@@ -9,6 +9,8 @@ import {
   OWNER_B,
   row,
   signIn,
+  signOut,
+  openPreferences,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -117,6 +119,8 @@ test("navigation fits at 320 and 390 px in IT and EN and journal filters stay co
   await page.setViewportSize({ width: 320, height: 844 });
   await page.goto("/");
   const language = page.locator(".language");
+  await expect(page.getByRole("navigation")).toHaveCount(0);
+  await signIn(page);
   const nav = page.getByRole("navigation");
 
   for (const width of [320, 390]) {
@@ -133,7 +137,6 @@ test("navigation fits at 320 and 390 px in IT and EN and journal filters stay co
   }
 
   await language.selectOption("it");
-  await signIn(page);
   const filters = page.locator(".journal-filters");
   const search = filters.getByRole("searchbox");
   const type = filters.getByLabel("Tipo di fumata");
@@ -227,7 +230,7 @@ test("dashboard links open the exact product and direct routes preserve filters 
   await expect(search).toBeVisible();
 });
 
-test("stock preferences can be retried on Dashboard and opened from Account", async ({ page }) => {
+test("stock preferences can be retried on Dashboard and opened from the account menu", async ({ page }) => {
   const api = await cloudMock(page);
   let fail = true;
   await page.route(
@@ -244,24 +247,27 @@ test("stock preferences can be retried on Dashboard and opened from Account", as
   await page.getByRole("button", { name: "Riprova preferenze di scorta" }).click();
   await expect(page.getByRole("alert")).toHaveCount(0);
 
-  const settings = page.locator(".stock-alert-settings");
-  await page.getByRole("button", { name: "Impostazioni avvisi di scorta" }).click();
-  await expect(settings.locator("summary")).toBeFocused();
+  const settings = page.getByRole("dialog", { name: "Preferenze" });
+  await openPreferences(page);
+  await expect(settings.getByRole("heading", { name: "Preferenze" })).toBeFocused();
   const threshold = settings.getByLabel("Soglia sigari (pezzi)");
   await threshold.selectOption("4");
+  await settings.getByRole("button", { name: "Chiudi" }).click();
   await page.getByRole("navigation").getByRole("button", { name: "Pipe" }).click();
+  await openPreferences(page);
   await expect(threshold).toHaveValue("4");
   await settings.getByRole("button", { name: "Salva preferenze scorte" }).click();
   await expect.poll(() => api.stockPreferences.get(OWNER_A)?.cigar_low_stock_threshold).toBe(4);
 
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await settings.getByRole("button", { name: "Chiudi" }).click();
+  await signOut(page);
   await expect(settings).toHaveCount(0);
   api.stockPreferences.set(OWNER_B, {
     stock_alerts_enabled: false,
     cigar_low_stock_threshold: 10,
   });
   await signIn(page, "other@example.test");
-  await page.getByRole("button", { name: "Impostazioni avvisi di scorta" }).click();
+  await openPreferences(page);
   await expect(threshold).toHaveValue("10");
 });
 

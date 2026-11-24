@@ -82,6 +82,10 @@
   "photoLoading": "Caricamento fotografia…",
   "sections": "Sezioni",
   "auth": {
+    "menu": "Menu account",
+    "preferences": "Preferenze",
+    "close": "Chiudi",
+    "loginIntro": "Accedi alla tua collezione e al tuo diario delle fumate.",
     "account": "Account",
     "connected": "Accesso effettuato",
     "localNotice": "Collezione e diario mostrano i dati cloud dell’account corrente. I dati locali sono conservati e si importano solo su richiesta.",

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import {
   cloudMock,
   signIn,
+  signOut,
   row,
   LEGACY,
   PHOTO,
@@ -228,8 +229,7 @@ test("late uploads cannot attach or disclose photos after logout and owner chang
   const other = await page.context().newPage();
   await cloudMock(other);
   await other.goto("/#pipes");
-  await other.locator(".account summary").click();
-  await other.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(other);
   await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(card(page)).toHaveCount(0);
   await other.close();

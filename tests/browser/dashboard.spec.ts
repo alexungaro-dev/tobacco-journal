@@ -9,6 +9,7 @@ import {
   PHOTO,
   row,
   signIn,
+  signOut,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -82,7 +83,7 @@ test("dashboard is the default and links correct counts, recent details and the 
   });
   await page.goto("/");
   await expect(
-    page.getByText("Accedi per visualizzare la tua dashboard personale."),
+    page.getByRole("heading", { name: "Bentornato" }),
   ).toBeVisible();
   expect(
     api.requests.some((request) =>
@@ -231,7 +232,7 @@ test("account preferences control dashboard alert visibility and isolated chart 
   await expect(
     chart.getByText("Nessuna fumata in questo periodo."),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await signIn(page, "other@example.test");
   await expect(recent(page)).toContainText("Foreign session");
   await expect(recent(page).getByText("Guest Current")).toHaveCount(0);

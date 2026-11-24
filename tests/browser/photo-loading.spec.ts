@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { AUTH_ORIGIN, signIn } from "./cloudMock";
+import { AUTH_ORIGIN, signIn, signOut } from "./cloudMock";
 import { photoCatalogueFixture } from "./photoCatalogueFixture";
 
 function card(page: Page, name: string) {
@@ -10,7 +10,6 @@ async function openCatalogue(page: Page) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/#cigars");
   await signIn(page);
-  await page.locator(".account summary").click();
   await page.evaluate(() => window.scrollTo(0, 0));
   await expect(page.locator(".card")).toHaveCount(8);
 }
@@ -72,13 +71,11 @@ test("switching accounts discards a deferred download already in flight", async 
     const last = card(page, "Example Riserva 7");
     await last.locator(".photo").scrollIntoViewIfNeeded();
     await started;
-    await page.locator(".account summary").click();
-    await page.getByRole("button", { name: "Esci", exact: true }).click();
+    await signOut(page);
     await expect(page.locator(".card")).toHaveCount(0);
 
     await signIn(page, "other@example.test");
-    await page.locator(".account summary").click();
-    await page.evaluate(() => window.scrollTo(0, 0));
+      await page.evaluate(() => window.scrollTo(0, 0));
     await expect(card(page, "Example Other private cigar").locator("img")).toHaveAttribute("src", /^blob:/);
     release();
     await expect(page.locator(".card")).toHaveCount(1);

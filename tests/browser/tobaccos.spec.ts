@@ -8,6 +8,7 @@ import {
   OWNER_B,
   PHOTO,
   signIn,
+  signOut,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -237,7 +238,7 @@ test("stale edits, logout during upload, and owner switching leave the other cat
   );
   await save(page).click();
   const request = await upload;
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await expect(editor(page)).toHaveCount(0);
   await signIn(page, "other@example.test");
   release();

@@ -10,6 +10,7 @@ import {
   PHOTO,
   row,
   signIn,
+  signOut,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -273,7 +274,7 @@ test("switching accounts during photo upload prevents late attachment and reject
   );
   await save(page).click();
   const request = await upload;
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await expect(editor(page)).toHaveCount(0);
   await signIn(page, "other@example.test");
   release();

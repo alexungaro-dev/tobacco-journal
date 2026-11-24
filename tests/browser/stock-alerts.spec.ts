@@ -6,6 +6,8 @@ import {
   OWNER_B,
   row,
   signIn,
+  signOut,
+  openPreferences,
   tobaccoRow,
 } from "./cloudMock";
 
@@ -57,11 +59,12 @@ test("stock alerts use account settings, persist and never infer tobacco level f
   await expect(card(page, "None").getByText("Esaurito")).toBeVisible();
   await expect(card(page, "Four").locator(".stock-alert")).toHaveCount(0);
   await expect(card(page, "Unknown").locator(".stock-alert")).toHaveCount(0);
-  await page.getByText("Avvisi di scorta", { exact: true }).click();
+  await openPreferences(page);
   const threshold = page.getByLabel("Soglia sigari (pezzi)");
   const persist = page.getByRole("button", { name: "Salva preferenze scorte" });
   await threshold.selectOption("4");
   await persist.click();
+  await page.getByRole("button", { name: "Chiudi", exact: true }).click();
   await expect(card(page, "Four").getByText("Scorta bassa")).toBeVisible();
   await page.reload();
   await expect(card(page, "Four").getByText("Scorta bassa")).toBeVisible();
@@ -72,9 +75,10 @@ test("stock alerts use account settings, persist and never infer tobacco level f
   await expect(card(page, "Blend unknown").locator(".stock-alert")).toHaveCount(
     0,
   );
-  await page.getByText("Avvisi di scorta", { exact: true }).click();
+  await openPreferences(page);
   await page.getByLabel("Mostra gli avvisi di scorta").uncheck();
   await persist.click();
+  await page.getByRole("button", { name: "Chiudi", exact: true }).click();
   await expect(card(page, "Blend low").locator(".stock-alert")).toHaveCount(0);
   await page.getByRole("button", { name: "Diario", exact: true }).click();
   await startCigar(page, "low");
@@ -83,8 +87,7 @@ test("stock alerts use account settings, persist and never infer tobacco level f
     stock_alerts_enabled: false,
     cigar_low_stock_threshold: 4,
   });
-  await page.locator(".account summary").click();
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await signIn(page, "other@example.test");
   await startCigar(page, "other");
   await expect(editor(page).getByText("Scorta bassa")).toBeVisible();

@@ -1,4 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
+import { openAccountMenu, signOut } from "./cloudMock";
+
 const id = "11111111-1111-1111-1111-111111111111";
 const origin = "https://auth-test.supabase.co";
 const email = "reader@example.test";
@@ -35,6 +37,7 @@ async function mock(
 ) {
   const requests: {
     path: string;
+    method: string;
     body: Record<string, unknown>;
     headers: Record<string, string>;
   }[] = [];
@@ -45,6 +48,7 @@ async function mock(
     const body = request.postDataJSON() || {};
     requests.push({
       path: url.pathname + url.search,
+      method: request.method(),
       body,
       headers: request.headers(),
     });
@@ -75,7 +79,9 @@ async function mock(
       result = { user: { ...user, email_confirmed_at: null }, session: null };
     else if (url.pathname === "/auth/v1/user") result = user;
     else if (url.pathname === "/rest/v1/profiles") {
-      if (profileFails) {
+      if (request.method() === "GET") {
+        result = { stock_alerts_enabled: true, cigar_low_stock_threshold: 3 };
+      } else if (profileFails) {
         status = 503;
         result = { message: "DB unavailable" };
       } else {
@@ -102,9 +108,16 @@ async function mock(
 }
 async function openAccount(page: Page) {
   await page.goto("/#pipes");
-  await page.locator(".account summary").click();
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
 }
+async function expectSignedIn(page: Page) {
+  await openAccountMenu(page);
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  const details = page.getByRole("dialog", { name: "Account" });
+  await expect(details.getByText(`Accesso come ${email}`)).toBeVisible();
+  await details.getByRole("button", { name: "Chiudi" }).click();
+}
+
 async function login(page: Page) {
   await page.getByLabel("Email", { exact: true }).fill(email);
   await page.getByLabel("Password", { exact: true }).fill(password);
@@ -124,7 +137,7 @@ test("login, profile retry, session reload and logout preserve local catalogue",
   }, pipes);
   await openAccount(page);
   await login(page);
-  await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
+  await expectSignedIn(page);
   await expect(
     page.getByText(/non è stato possibile preparare il profilo/),
   ).toBeVisible();
@@ -134,14 +147,13 @@ test("login, profile retry, session reload and logout preserve local catalogue",
     page.getByText(/non è stato possibile preparare il profilo/),
   ).toHaveCount(0);
   const profile = api.requests
-    .filter((r) => r.path.startsWith("/rest/v1/profiles"))
+    .filter((r) => r.method === "POST" && r.path.startsWith("/rest/v1/profiles"))
     .at(-1)!;
   expect(profile.body).toEqual({ id, preferred_locale: "it" });
   expect(profile.headers.prefer).toContain("resolution=ignore-duplicates");
   await page.reload();
-  await page.locator(".account summary").click();
-  await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await expectSignedIn(page);
+  await signOut(page);
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
     pipes,
@@ -255,6 +267,8 @@ test("PKCE password recovery, reload and password update; invalid callbacks are 
     page.getByRole("heading", { name: "Scegli una nuova password" }),
   ).toBeVisible();
   await expect(page).toHaveURL(/\/#dashboard$/);
+  await expect(page.getByRole("navigation")).toHaveCount(0);
+  await expect(page.getByLabel("Nuova password", { exact: true })).toBeFocused();
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "Scegli una nuova password" }),
@@ -262,9 +276,8 @@ test("PKCE password recovery, reload and password update; invalid callbacks are 
   await page.getByLabel("Nuova password", { exact: true }).fill(password);
   await page.getByLabel("Conferma password", { exact: true }).fill(password);
   await page.getByRole("button", { name: "Salva nuova password" }).click();
-  await expect(page.locator(".account").getByRole("status")).toContainText(
-    "Password aggiornata",
-  );
+  await expect(page.getByRole("status").filter({ hasText: "Password aggiornata" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Menu account" })).toBeVisible();
   expect(
     api.requests.some(
       (r) => r.path === "/auth/v1/user" && r.body.password === password,
@@ -290,8 +303,7 @@ test("expired stored session refreshes before restoring access", async ({
     session(-10),
   );
   await page.goto("/#pipes");
-  await page.locator(".account summary").click();
-  await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
+  await expectSignedIn(page);
   expect(
     api.requests.some((r) => r.path.includes("grant_type=refresh_token")),
   ).toBeTruthy();
@@ -321,7 +333,7 @@ test("email confirmation exchanges PKCE code only once and creates a profile aft
   await expect(
     page.getByText("Email confermata. Accesso effettuato.", { exact: true }),
   ).toBeVisible();
-  await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
+  await expectSignedIn(page);
   expect(
     api.requests.filter((r) => r.path.includes("grant_type=pkce")),
   ).toHaveLength(1);
@@ -347,7 +359,6 @@ test("revoked refresh token returns to login without touching local data", async
     localStorage.setItem("tj-pipes-v1", "[]");
   }, session(-10));
   await page.goto("/#pipes");
-  await page.locator(".account summary").click();
   await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem("tj-pipes-v1"))).toBe(
     "[]",
@@ -359,18 +370,17 @@ test("logout propagates to another tab", async ({ page, context }) => {
   await mock(page);
   await openAccount(page);
   await login(page);
-  await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
+  await expectSignedIn(page);
   const other = await context.newPage();
   await mock(other);
   await openAccountSignedIn(other);
-  await page.getByRole("button", { name: "Esci", exact: true }).click();
+  await signOut(page);
   await expect(other.getByLabel("Email", { exact: true })).toBeVisible();
   await other.close();
 });
 async function openAccountSignedIn(page: Page) {
   await page.goto("/#pipes");
-  await page.locator(".account summary").click();
-  await expect(page.getByText(`Accesso come ${email}`)).toBeVisible();
+  await expectSignedIn(page);
 }
 
 test("confirmation resend uses Auth API without creating a profile", async ({
@@ -393,4 +403,70 @@ test("confirmation resend uses Auth API without creating a profile", async ({
   expect(
     api.requests.some((r) => r.path.startsWith("/rest/v1/profiles")),
   ).toBeFalsy();
+});
+
+test("header account disclosure supports keyboard navigation and restores focus", async ({ page }) => {
+  await mock(page);
+  await openAccount(page);
+  await expect(page.getByRole("navigation")).toHaveCount(0);
+  await login(page);
+
+  const trigger = page.getByRole("button", { name: "Menu account" });
+  const account = page.getByRole("button", { name: "Account", exact: true });
+  const preferences = page.getByRole("button", { name: "Preferenze", exact: true });
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(".auth-screen")).toHaveCount(0);
+  await trigger.focus();
+  await trigger.press("Enter");
+  await expect(account).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(preferences).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(page.getByRole("button", { name: "Esci" })).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(trigger).toBeFocused();
+  await expect(trigger).toHaveAttribute("aria-expanded", "false");
+
+  await trigger.press("Space");
+  await account.press("Enter");
+  const dialog = page.getByRole("dialog", { name: "Account" });
+  await expect(dialog.getByRole("heading")).toBeFocused();
+  await expect(dialog.getByText(`Accesso come ${email}`)).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+});
+
+test("account menu fits on a narrow touch viewport, closes outside and logs out", async ({ browser, baseURL }) => {
+  const context = await browser.newContext({
+    baseURL,
+    viewport: { width: 320, height: 740 },
+    locale: "it-IT",
+    hasTouch: true,
+    isMobile: true,
+  });
+  try {
+    const page = await context.newPage();
+    await mock(page);
+    await openAccount(page);
+    await login(page);
+
+    await page.getByRole("combobox", { name: "Lingua" }).selectOption("en");
+    const trigger = page.getByRole("button", { name: "Account menu" });
+    await trigger.tap();
+    const popover = page.locator(".profile-popover");
+    await expect(popover).toBeVisible();
+    const position = await popover.boundingBox();
+    expect(position!.x).toBeGreaterThanOrEqual(0);
+    expect(position!.x + position!.width).toBeLessThanOrEqual(320);
+    await page.locator(".brand").tap();
+    await expect(trigger).toHaveAttribute("aria-expanded", "false");
+    await trigger.tap();
+    await popover.getByRole("button", { name: "Sign out" }).tap();
+    await expect(page.getByRole("heading", { name: "Welcome back" })).toBeFocused();
+    await expect(page.getByRole("navigation")).toHaveCount(0);
+    await expect(trigger).toHaveCount(0);
+  } finally {
+    await context.close();
+  }
 });

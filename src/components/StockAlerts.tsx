@@ -6,8 +6,8 @@ import {
   useRef,
   useState,
   type ReactNode,
-  type Ref,
 } from "react";
+import { AccountDialog } from "./AccountDialog";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../auth/client";
 import {
@@ -47,11 +47,13 @@ export function StockAlertBadge(
 export function StockAlertPreferences({
   owner,
   children,
-  settingsRef,
+  settingsOpen,
+  onSettingsClose,
 }: {
   owner: string;
   children: ReactNode;
-  settingsRef: Ref<HTMLDetailsElement>;
+  settingsOpen: boolean;
+  onSettingsClose: () => void;
 }) {
   const { t } = useTranslation();
   const [preferences, setPreferences] = useState<StockPreferences>();
@@ -144,80 +146,85 @@ export function StockAlertPreferences({
     }
   }
 
+  const loadError = loadFailed && (
+    <div className="notice">
+      <p role="alert">{t("stockAlerts.loadError")}</p>
+      <button
+        type="button"
+        className="btn secondary"
+        disabled={loading || saving}
+        onClick={() => void load()}
+      >
+        {t("stockAlerts.retry")}
+      </button>
+    </div>
+  );
+
   return (
     <Preferences.Provider value={preferences}>
-      <details id="stock-alert-preferences" className="stock-alert-settings" ref={settingsRef}>
-        <summary>{t("stockAlerts.settings")}</summary>
-        {draft && (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              void save();
-            }}
-          >
-            <fieldset
-              className="pipefields stock-alert-controls"
-              disabled={saving}
+      {settingsOpen && (
+        <AccountDialog title={t("auth.preferences")} onClose={onSettingsClose}>
+          <h3>{t("stockAlerts.settings")}</h3>
+          {draft && (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                void save();
+              }}
             >
-              <label className="journal-check">
-                <input
-                  type="checkbox"
-                  checked={draft.enabled}
-                  onChange={(event) =>
-                    change({ ...draft, enabled: event.target.checked })
-                  }
-                />
-                {t("stockAlerts.enable")}
-              </label>
-              <label>
-                {t("stockAlerts.threshold")}
-                <select
-                  aria-label={t("stockAlerts.threshold")}
-                  value={draft.threshold}
-                  onChange={(event) =>
-                    change({
-                      ...draft,
-                      threshold: Number(event.target.value),
-                    })
-                  }
-                >
-                  {cigarThresholds.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button
-                className="btn secondary"
-                type="submit"
-                disabled={!dirty.current}
+              <fieldset
+                className="pipefields stock-alert-controls"
+                disabled={saving}
               >
-                {t("stockAlerts.save")}
-              </button>
-            </fieldset>
-          </form>
-        )}
-        {status && (
-          <p role={status.endsWith("Error") ? "alert" : "status"}>
-            {t("stockAlerts." + status)}
-          </p>
-        )}
-        {!draft && loading && <p role="status">{t("stockAlerts.loading")}</p>}
-      </details>
-      {loadFailed && (
-        <div className="notice">
-          <p role="alert">{t("stockAlerts.loadError")}</p>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={loading || saving}
-            onClick={() => void load()}
-          >
-            {t("stockAlerts.retry")}
-          </button>
-        </div>
+                <label className="journal-check">
+                  <input
+                    type="checkbox"
+                    checked={draft.enabled}
+                    onChange={(event) =>
+                      change({ ...draft, enabled: event.target.checked })
+                    }
+                  />
+                  {t("stockAlerts.enable")}
+                </label>
+                <label>
+                  {t("stockAlerts.threshold")}
+                  <select
+                    aria-label={t("stockAlerts.threshold")}
+                    value={draft.threshold}
+                    onChange={(event) =>
+                      change({
+                        ...draft,
+                        threshold: Number(event.target.value),
+                      })
+                    }
+                  >
+                    {cigarThresholds.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  className="btn secondary"
+                  type="submit"
+                  disabled={!dirty.current}
+                >
+                  {t("stockAlerts.save")}
+                </button>
+              </fieldset>
+            </form>
+          )}
+          {status && (
+            <p role={status.endsWith("Error") ? "alert" : "status"}>
+              {t("stockAlerts." + status)}
+            </p>
+          )}
+          {!draft && loading && <p role="status">{t("stockAlerts.loading")}</p>}
+          {loadError}
+        </AccountDialog>
       )}
+      {!settingsOpen && loadError}
       {children}
     </Preferences.Provider>
   );
